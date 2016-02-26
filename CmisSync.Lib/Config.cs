@@ -348,11 +348,7 @@ namespace CmisSync.Lib
 
         private string GetLogLevel()
         {
-#if (DEBUG)
-            return "DEBUG";
-#else
             return "INFO";
-#endif
         }
 
 
