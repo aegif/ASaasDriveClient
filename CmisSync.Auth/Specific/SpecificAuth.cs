@@ -15,19 +15,20 @@ namespace CmisSync.Auth.Specific
 {
     class SpecificAuth
     {
-        public static void setCmisParameters(Dictionary<string, string> parameters)
-        {
+        public static void setCmisParameters(Dictionary<string, string> parameters) {
             //Get token
             string user = parameters[SessionParameter.User];
             string password = parameters[SessionParameter.Password];
             string repositoryId = parameters[SessionParameter.RepositoryId];
             string atompubUrl = parameters[SessionParameter.AtomPubUrl];
 
-            string token = CmisSync.Auth.Specific.NemakiWare.AuthTokenManager.getOrRegister(parameters);
+            if (atompubUrl.Contains("NemakiWare")) { // TODO: ASaas ワークアラウンド
+                string token = CmisSync.Auth.Specific.NemakiWare.AuthTokenManager.getOrRegister(parameters);
 
-            parameters[SessionParameter.AuthenticationProviderClass] = typeof(CmisSync.Auth.Specific.NemakiWare.NemakiAuthenticationProvider).AssemblyQualifiedName;
-            parameters["nemaki_auth_token"] = token;
-            parameters["nemaki_auth_token_app"] = "cmissync";
+                parameters[SessionParameter.AuthenticationProviderClass] = typeof(CmisSync.Auth.Specific.NemakiWare.NemakiAuthenticationProvider).AssemblyQualifiedName;
+                parameters["nemaki_auth_token"] = token;
+                parameters["nemaki_auth_token_app"] = "cmissync";
+            }
         }
     }
 }
