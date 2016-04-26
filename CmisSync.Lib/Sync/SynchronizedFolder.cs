@@ -1254,7 +1254,7 @@ namespace CmisSync.Lib.Sync
                             Logger.Debug("after SetContentStream");
 
                             // Get updated CmisObject
-                            var updatedFile = session.GetObjectByPath(remoteFile.Paths[0]);
+                            var updatedFile = session.GetObject(remoteFile.Id);
                             
                             // Update timestamp in database.
                             database.SetFileServerSideModificationDate(syncItem, updatedFile.LastModificationDate.Value.ToUniversalTime());
