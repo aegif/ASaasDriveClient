@@ -91,7 +91,7 @@ namespace CmisSync.Lib.Sync
                 IList<string> remoteSubfolders = new List<string>();
 
                 // Crawl remote children.
-                Logger.DebugFormat("Crawl remote folder {0}", this.remoteFolderPath);
+                Logger.DebugFormat("Crawl remote folder {0}", remotePath);
                 bool success = CrawlRemote(remoteFolder, remotePath, localFolder, remoteFiles, remoteSubfolders);
                 Logger.DebugFormat("Crawl remote folder includes {0} files", remoteFiles.Count);
 
