@@ -293,13 +293,14 @@ namespace CmisSync
         /// </summary>
         public void ManualSync(string reponame)
         {
+            Logger.Debug("Requested to manually sync " + reponame);
             foreach (RepoBase aRepo in this.repositories)
             {
                 if (aRepo.Name == reponame && aRepo.Status == SyncStatus.Idle)
                 {
-
+                    Logger.Debug("Start manually sync " + aRepo.Name);
                     aRepo.ManualSync();
-                    Logger.Debug("Requested to manually sync " + aRepo.Name);
+                    Logger.Debug("Finish manually sync " + aRepo.Name);
                 }
             }
         }
