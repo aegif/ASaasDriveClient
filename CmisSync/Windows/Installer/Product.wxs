@@ -11,7 +11,7 @@
     <Condition Message="This application requires .NET Framework 4.0. Please install the .NET Framework then run this installer again. Download?http://www.microsoft.com/en-us/download/details.aspx?id=17113">
       <![CDATA[Installed OR NETFRAMEWORK40CLIENT]]>
     </Condition>
-
+    
     <Media Id="1" Cabinet="ASaaSDrive.cab" EmbedCab="yes"/>
 
     <Directory Id="TARGETDIR" Name="SourceDir">
@@ -234,5 +234,13 @@
     <MajorUpgrade
       Schedule="afterInstallInitialize"
       DowngradeErrorMessage="A later version of CmisSync is already installed. Setup will now exit." />
+
+    <!-- Code to force termination of running program...MSIExec couldn't do it -->
+    <Property Id="QtExecCmdLine" Value='"[WindowsFolder]\System32\taskkill.exe" /F /IM "CmisSync.exe"'/>
+    <CustomAction Id="APP.TaskClose" BinaryKey="WixCA" DllEntry="CAQuietExec" Execute="immediate" Return="ignore"/>
+    <InstallExecuteSequence>
+      <Custom Action="APP.TaskClose" After="LaunchConditions"/>
+    </InstallExecuteSequence>
+    
   </Product>
 </Wix>
