@@ -44,7 +44,7 @@ namespace CmisSync.Lib.Sync
                 //For A-SaaSDrive fluquently full sync,  because watcher dosn't detect many file changes .
                 if (changeLogIterationCounter > 263907 / (pollInterval / 1000 + 117))
                 {
-                    Logger.Debug("LOCAL FORCE SCAN : It has been a while since the last crawl sync, so launching a crawl sync now.");
+                    Logger.Info("LOCAL FORCE SCAN : It has been a while since the last crawl sync, so launching a crawl sync now.");
                     CrawlSyncAndUpdateChangeLogToken(remoteFolder, remotePath, localFolder);
                     changeLogIterationCounter = 0;
                     return;
@@ -71,7 +71,7 @@ namespace CmisSync.Lib.Sync
 
                 if (lastTokenOnClient == lastTokenOnServer)
                 {
-                    Logger.Debug("No changes to sync, tokens on server and client are equal: \"" + lastTokenOnClient + "\"");
+                    Logger.Info("No changes to sync, tokens on server and client are equal: \"" + lastTokenOnClient + "\"");
                     return;
                 }
 

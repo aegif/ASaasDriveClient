@@ -91,17 +91,15 @@ namespace CmisSync.Lib.Sync
                 IList<string> remoteSubfolders = new List<string>();
 
                 // Crawl remote children.
-                Logger.DebugFormat("Crawl remote folder {0}", remotePath);
+                Logger.InfoFormat("Crawl remote folder {0}", remotePath);
                 bool success = CrawlRemote(remoteFolder, remotePath, localFolder, remoteFiles, remoteSubfolders);
-                Logger.DebugFormat("Crawl remote folder includes {0} files", remoteFiles.Count);
-
 
                 // Crawl local files.
-                Logger.DebugFormat("Crawl local files in the local folder {0}", localFolder);
+                Logger.InfoFormat("Crawl local files in the local folder {0}", localFolder);
                 CrawlLocalFiles(localFolder, remoteFolder, remoteFiles);
 
                 // Crawl local folders.
-                Logger.DebugFormat("Crawl local folder {0}", localFolder);
+                Logger.InfoFormat("Crawl local folder {0}", localFolder);
                 CrawlLocalFolders(localFolder, remoteFolder, remoteSubfolders);
 
                 return success;
@@ -141,7 +139,10 @@ namespace CmisSync.Lib.Sync
                 // TODO: use paging
                 IOperationContext operationContext = session.CreateOperationContext();
                 operationContext.MaxItemsPerPage = Int32.MaxValue;
-                foreach (ICmisObject cmisObject in remoteFolder.GetChildren(operationContext))
+
+                var remoteObjects = remoteFolder.GetChildren(operationContext);
+                Logger.InfoFormat("Crawl remote folder includes {0} objects", remoteObjects.TotalNumItems);
+                foreach (ICmisObject cmisObject in remoteObjects)
                 {
                     try
                     {
@@ -204,7 +205,7 @@ namespace CmisSync.Lib.Sync
                 {
                     if (Utils.WorthSyncing(localFolder, remoteSubFolder.Name, repoInfo))
                     {
-                        // Logger.Debug("CrawlRemote localFolder:\"" + localFolder + "\" remoteSubFolder.Path:\"" + remoteSubFolder.Path + "\" remoteSubFolder.Name:\"" + remoteSubFolder.Name + "\"");
+                        Logger.Debug("CrawlRemote localFolder:\"" + localFolder + "\" remoteSubFolder.Path:\"" + remoteSubFolder.Path + "\" remoteSubFolder.Name:\"" + remoteSubFolder.Name + "\"");
                         remoteFolders.Add(remoteSubFolder.Name);
                         var subFolderItem = database.GetFolderSyncItemFromRemotePath(remoteSubFolder.Path);
                         if (null == subFolderItem)
