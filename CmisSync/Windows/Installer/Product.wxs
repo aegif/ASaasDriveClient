@@ -235,12 +235,5 @@
       Schedule="afterInstallInitialize"
       DowngradeErrorMessage="A later version of CmisSync is already installed. Setup will now exit." />
 
-    <!-- Code to force termination of running program...MSIExec couldn't do it -->
-    <Property Id="QtExecCmdLine" Value='"[WindowsFolder]\System32\taskkill.exe" /F /IM "CmisSync.exe"'/>
-    <CustomAction Id="APP.TaskClose" BinaryKey="WixCA" DllEntry="CAQuietExec" Execute="immediate" Return="ignore"/>
-    <InstallExecuteSequence>
-      <Custom Action="APP.TaskClose" After="LaunchConditions"/>
-    </InstallExecuteSequence>
-    
   </Product>
 </Wix>
