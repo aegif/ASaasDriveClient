@@ -459,5 +459,29 @@ namespace CmisSync.Lib
                 }
             }
         }
+
+
+        /// <summary>
+        /// A file system change
+        /// </summary>
+       public class Change
+        {
+            /// <summary>
+            /// The change.
+            /// </summary>
+            public FileSystemEventArgs fileSystenEventArgs { get; private set; }
+            
+            /// <summary>
+            /// The time at which the change notification was received.
+            /// The actual change occurred earlier than that.
+            /// </summary>
+            public DateTime time { get; private set; }
+            
+            public Change(FileSystemEventArgs fileSystenEventArgs, DateTime time)
+            {
+                this.fileSystenEventArgs = fileSystenEventArgs;
+                this.time = time;
+            }
+        }
     }
 }
