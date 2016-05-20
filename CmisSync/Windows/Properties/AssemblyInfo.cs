@@ -1,25 +1,16 @@
-using System.Reflection;
+﻿using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 // General Information about an assembly is controlled through the following
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-<<<<<<< HEAD
 [assembly: AssemblyTitle("A-Saas Drive Client Software")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Aegif corp.")]
 [assembly: AssemblyProduct("A-Saas Drive")]
 [assembly: AssemblyCopyright("Aegif corp.")]
-=======
-[assembly: AssemblyTitle("CmisSync")]
-[assembly: AssemblyDescription("")]
-[assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("CmisSync")]
-[assembly: AssemblyCopyright("Copyright ©  2013")]
->>>>>>> 8221ab14b0b42c9828cf2363cc0373f9aa514092
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -38,10 +29,5 @@ using System.Runtime.InteropServices;
 //      Build Number
 //      Revision
 //
-<<<<<<< HEAD
-[assembly: AssemblyVersion("1.0.1")]
-[assembly: AssemblyFileVersion("1.0.1")]
-=======
-[assembly: AssemblyVersion("1.0.0.0")]
-[assembly: AssemblyFileVersion("1.0.0.0")]
->>>>>>> 8221ab14b0b42c9828cf2363cc0373f9aa514092
+[assembly: AssemblyVersion("1.0.1.1")]
+[assembly: AssemblyFileVersion("1.0.1.1")]
