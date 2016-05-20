@@ -169,7 +169,7 @@
     <value>Завершить</value>
   </data>
   <data name="FolderAlreadyExist" xml:space="preserve">
-    <value>Папка уже в корневой папке A-SaaS Drive</value>
+    <value>Папка уже в корневой папке CmisSync</value>
   </data>
   <data name="Help" xml:space="preserve">
     <value>Справка</value>

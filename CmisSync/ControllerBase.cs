@@ -1,4 +1,4 @@
-﻿//   CmisSync, a collaboration and sharing tool.
+//   CmisSync, a collaboration and sharing tool.
 //   Copyright (C) 2010  Hylke Bons <hylkebons@gmail.com>
 //
 //   This program is free software: you can redistribute it and/or modify
@@ -293,14 +293,13 @@ namespace CmisSync
         /// </summary>
         public void ManualSync(string reponame)
         {
-            Logger.Info("Requested to manually sync " + reponame);
             foreach (RepoBase aRepo in this.repositories)
             {
                 if (aRepo.Name == reponame && aRepo.Status == SyncStatus.Idle)
                 {
-                    Logger.Debug("Start manually sync " + aRepo.Name);
+
                     aRepo.ManualSync();
-                    Logger.Debug("Finish manually sync " + aRepo.Name);
+                    Logger.Debug("Requested to manually sync " + aRepo.Name);
                 }
             }
         }
@@ -353,7 +352,7 @@ namespace CmisSync
         {
             lock (this.repo_lock)
             {
-                //FIXME: why are we sospendig all repositories instead of the one passed?
+                //TODO: why are we suspending all repositories instead of the one passed?
                 foreach (RepoBase aRepo in this.repositories)
                 {
                     if (aRepo.Status != SyncStatus.Suspend)
@@ -376,7 +375,7 @@ namespace CmisSync
         {
             lock (this.repo_lock)
             {
-                //FIXME: why are we sospendig all repositories instead of the one passed?
+                //TODO: why are we suspending all repositories instead of the one passed?
                 foreach (RepoBase aRepo in this.repositories)
                 {
                     if (aRepo.Status != SyncStatus.Suspend)
@@ -396,7 +395,7 @@ namespace CmisSync
         {
             lock (this.repo_lock)
             {
-                //FIXME: why are we sospendig all repositories instead of the one passed?
+                //TODO: why are we suspending all repositories instead of the one passed?
                 foreach (RepoBase aRepo in this.repositories)
                 {
                     if (aRepo.Status == SyncStatus.Suspend)
@@ -583,7 +582,7 @@ namespace CmisSync
         /// </summary>
         public void ActivityError(Tuple<string, Exception> error)
         {
-            //FIXME: why a Tuple? We should get delegate(ErrorEvent event) or delegate(string repoName, Exception error)
+            //TODO: why a Tuple? We should get delegate(ErrorEvent event) or delegate(string repoName, Exception error)
             OnError(error);
         }
     }

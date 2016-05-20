@@ -52,7 +52,7 @@ namespace CmisSync.Lib
         /// It is used for any newly created synchronized folder.
         /// In milliseconds.
         /// </summary>
-        public static readonly int DEFAULT_POLL_INTERVAL = 10 * 1000; 
+        public static readonly int DEFAULT_POLL_INTERVAL = 10 * 1000;  // 10 seconds.
 
 
         /// <summary>

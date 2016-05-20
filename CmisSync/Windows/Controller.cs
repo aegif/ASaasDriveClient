@@ -210,7 +210,6 @@ namespace CmisSync
             p.StartInfo.FileName = path;
             p.StartInfo.UseShellExecute = true;
             p.Start();
-
         }
     }
 }

@@ -40,11 +40,9 @@ namespace CmisSync.Lib.Sync
                 // Interval=1 hours -> every 3 days -> about every 72 iterations
                 // Thus a good formula is: nb of iterations = 1 + 263907 / (pollInterval + 117)
                 double pollInterval = ConfigManager.CurrentConfig.GetFolder(repoInfo.Name).PollInterval;
-                //if ( (changeLogIterationCounter * 100) > 263907 / (pollInterval/1000 + 117) )
-                //For A-SaaSDrive fluquently full sync,  because watcher dosn't detect many file changes .
-                if (changeLogIterationCounter > 263907 / (pollInterval / 1000 + 117))
+                if (changeLogIterationCounter > 263907 / (pollInterval/1000 + 117))
                 {
-                    Logger.Info("LOCAL FORCE SCAN : It has been a while since the last crawl sync, so launching a crawl sync now.");
+                    Logger.Debug("It has been a while since the last crawl sync, so launching a crawl sync now.");
                     CrawlSyncAndUpdateChangeLogToken(remoteFolder, remotePath, localFolder);
                     changeLogIterationCounter = 0;
                     return;
@@ -71,7 +69,7 @@ namespace CmisSync.Lib.Sync
 
                 if (lastTokenOnClient == lastTokenOnServer)
                 {
-                    Logger.Info("No changes to sync, tokens on server and client are equal: \"" + lastTokenOnClient + "\"");
+                    Logger.Debug("No changes to sync, tokens on server and client are equal: \"" + lastTokenOnClient + "\"");
                     return;
                 }
 
@@ -171,7 +169,7 @@ namespace CmisSync.Lib.Sync
                 // Check whether it is a document worth syncing.
                 if (remoteDocument != null)
                 {
-                    if (!Utils.IsFileWorthSyncing(remoteDocument.Name, repoInfo))
+                    if (!Utils.IsFileWorthSyncing(repoInfo.CmisProfile.localFilename(remoteDocument), repoInfo))
                     {
                         Logger.Info("Ignore change as it is about a document unworth syncing: " + changeIdForDebug);
                         return false;

@@ -93,5 +93,5 @@
     </GetAssemblyIdentity>
     <Copy SourceFiles=".\bin\$(Configuration)\$(OutputName).exe" DestinationFiles=".\bin\$(Configuration)\$(OutputName).%(AssemblyVersion.Version).exe" />
     <Delete Files=".\bin\$(Configuration)\$(OutputName).exe" />
-  </Target>
+	</Target>
 </Project>

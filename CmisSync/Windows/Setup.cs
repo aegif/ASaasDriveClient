@@ -719,7 +719,7 @@ namespace CmisSync
                                             System.Windows.Controls.TreeViewItem subItem =
                                                 new System.Windows.Controls.TreeViewItem();
                                             subItem.Tag = new SelectionTreeItem(null, subfolder);
-                                            subItem.Header = CmisSync.Lib.Utils.GetLeafOfCmisPath(subfolder);
+                                            subItem.Header = CmisUtils.GetLeafname(subfolder);
                                             item.Items.Add(subItem);
                                         }
                                         ((SelectionTreeItem)item.Tag).childrenLoaded = true;
@@ -1107,11 +1107,11 @@ namespace CmisSync
                                     Width = 100
                                 };
 
-                                PollIntervalSlider slider = new PollIntervalSlider(slider_value, Controller.saved_sync_interval)
+                                PollIntervalSlider slider = new PollIntervalSlider(slider_value)
                                 {
                                     Width = 400,
+                                    PollInterval = Controller.saved_sync_interval
                                 };
-                                
 
                                 TextBlock slider_min_label = new TextBlock()
                                 {

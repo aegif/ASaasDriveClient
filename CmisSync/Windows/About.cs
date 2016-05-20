@@ -139,15 +139,6 @@ namespace CmisSync {
                 Width        = 318
             };
 
-            /*
-            Link website_link = new Link(Properties_Resources.ResourceManager.GetString(
-                "Website", CultureInfo.CurrentCulture), Controller.WebsiteLinkAddress);
-            Link credits_link = new Link(Properties_Resources.ResourceManager.GetString(
-                "Credits", CultureInfo.CurrentCulture), Controller.CreditsLinkAddress);
-            Link report_problem_link = new Link(Properties_Resources.ResourceManager.GetString(
-                "ReportProblem", CultureInfo.CurrentCulture), Controller.ReportProblemLinkAddress);
-            */
-
             Canvas canvas = new Canvas ();
 
             canvas.Children.Add (image);

@@ -94,6 +94,7 @@
     <None Include="Service References\CMISWebServicesReference\CMIS-Core.xsd">
       <SubType>Designer</SubType>
     </None>
+<<<<<<< HEAD
     <None Include="Service References\CMISWebServicesReference\CMIS-Core2.xsd">
       <SubType>Designer</SubType>
     </None>
@@ -105,6 +106,12 @@
     </None>
     <None Include="Service References\CMISWebServicesReference\CMISWebServices.wsdl" />
     <None Include="Service References\CMISWebServicesReference\CMISWebServices2.wsdl" />
+=======
+    <None Include="Service References\CMISWebServicesReference\CMIS-Messaging.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Service References\CMISWebServicesReference\CMISWebServices.wsdl" />
+>>>>>>> 8221ab14b0b42c9828cf2363cc0373f9aa514092
     <None Include="Service References\CMISWebServicesReference\DotCMIS.CMISWebServicesReference.cmisACLType.datasource">
       <DependentUpon>Reference.svcmap</DependentUpon>
     </None>
@@ -117,9 +124,12 @@
     <None Include="Service References\CMISWebServicesReference\DotCMIS.CMISWebServicesReference.cmisExtensionType.datasource">
       <DependentUpon>Reference.svcmap</DependentUpon>
     </None>
+<<<<<<< HEAD
     <None Include="Service References\CMISWebServicesReference\DotCMIS.CMISWebServicesReference.cmisObjectIdAndChangeTokenType.datasource">
       <DependentUpon>Reference.svcmap</DependentUpon>
     </None>
+=======
+>>>>>>> 8221ab14b0b42c9828cf2363cc0373f9aa514092
     <None Include="Service References\CMISWebServicesReference\DotCMIS.CMISWebServicesReference.cmisObjectInFolderContainerType.datasource">
       <DependentUpon>Reference.svcmap</DependentUpon>
     </None>

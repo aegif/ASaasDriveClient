@@ -273,8 +273,10 @@ namespace CmisSync.Lib
                     if (!redundantChange)
                     {
                         changeQueue.Enqueue(change);
-                    } else {
-                        Logger.DebugFormat("Local file change {0} discard by redundant", change.ChangeType);
+                    }
+                    else
+                    {
+                        Logger.DebugFormat("Local file change {0} discarded because redundant", change.ChangeType);
                     }
                 }
                 return changeQueue;
