@@ -32,8 +32,12 @@ namespace CmisSync.Lib
     public class Config
     {
 
-        public static readonly string SYNC_ROOTFOLDER_NAME = "ASaaSDrive";
         public static readonly string DEFAULT_URL_ADDRESS = "https://cloud.nemakiware.com/core/atom";
+
+        /// <summary>
+        /// Name of the folder where folders get synchronized to by default.
+        /// </summary>
+        public static readonly string SYNC_ROOTFOLDER_NAME = "ASaaSDrive";
 
         /// <summary>
         /// The current config schema version.
@@ -153,7 +157,7 @@ namespace CmisSync.Lib
 
 
         /// <summary>
-        /// Path where the synchronized folders are stored by default.
+        /// Path of the folder where the synchronized folders are stored to by default.
         /// </summary>
         public string FoldersPath
         {

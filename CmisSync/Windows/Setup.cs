@@ -798,8 +798,8 @@ namespace CmisSync
                                 {
                                     if (repository.Key == Controller.saved_repository)
                                     {
-                                        var remote_path = Controller.saved_remote_path.Replace('/',Path.DirectorySeparatorChar);
-                                        localfoldername += "\\" + repository.Value + remote_path;
+                                        var remote_path = Controller.saved_remote_path.Replace('/', Path.DirectorySeparatorChar);
+                                        localfoldername += "\\" + repository.Value;
                                         break;
                                     }
                                 }
