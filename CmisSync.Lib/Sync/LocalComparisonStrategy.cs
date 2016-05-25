@@ -63,6 +63,23 @@ namespace CmisSync.Lib.Sync
                 // TODO performance improvement: To reduce the number of database requests, count files and folders, and skip this step if equal to the numbers of database rows.
                 FindNewLocalObjects(rootFolder, ref addedFolders, ref addedFiles);
 
+                // Ignore added files that are sub-items of an added folder.
+                // Folder addition is done recursively so no need to add files twice.
+                foreach (string file in new List<string>(addedFiles)) // Copy the list because to avoid modifying it while iterating.
+                {
+                    foreach (string addedFolder in addedFolders)
+                    {
+                        if (file.StartsWith(addedFolder))
+                        {
+                            addedFiles.Remove(file);
+                        }
+                    }
+                }
+
+                // Ignore removed files that are sub-items of a removed folder.
+                // Folder removal is done recursively so no need to remove files twice.
+                // TODO
+
                 // TODO: Try to make sense of related changes, for instance renamed folders.
 
                 // TODO: Check local metadata modification cache.
