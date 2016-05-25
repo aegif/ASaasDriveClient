@@ -14,7 +14,12 @@ namespace CmisSync.Lib.Sync
         /// </summary>
         public partial class SynchronizedFolder
         {
-            public void ApplyLocalChanges(string rootFolder)
+            /// <summary>
+            /// Detect what has changed using the local database, and apply these
+            /// modifications to the remote server.
+            /// </summary>
+            /// <param name="rootFolder"></param>
+            public bool ApplyLocalChanges(string rootFolder)
             {
                 Logger.Debug("Checking for local changes");
 
@@ -67,29 +72,54 @@ namespace CmisSync.Lib.Sync
                     + " changes.");
 
                 // Apply changes to the server.
+                bool success = true;
 
                 // Apply: Deleted folders.
                 foreach(string deletedFolder in deletedFolders)
                 {
                     SyncItem deletedItem = SyncItemFactory.CreateFromLocalPath(deletedFolder, true, repoInfo, database);
-                    IFolder deletedIFolder = (IFolder)session.GetObjectByPath(deletedItem.RemotePath);
-                    DeleteRemoteFolder(deletedIFolder, deletedItem, Utils.UpperFolderLocal(deletedItem.LocalPath));
+                    try
+                    {
+                        IFolder deletedIFolder = (IFolder)session.GetObjectByPath(deletedItem.RemotePath);
+                        DeleteRemoteFolder(deletedIFolder, deletedItem, Utils.UpperFolderLocal(deletedItem.LocalPath));
+                    }
+                    catch (Exception e)
+                    {
+                        Logger.Error("Error applying local folder deletion to the server: " + deletedFolder, e);
+                        success = false;
+                    }
                 }
 
                 // Apply: Deleted files.
                 foreach (string deletedFile in deletedFiles)
                 {
                     SyncItem deletedItem = SyncItemFactory.CreateFromLocalPath(deletedFile, true, repoInfo, database);
-                    IDocument deletedDocument = (IDocument)session.GetObjectByPath(deletedItem.RemotePath);
-                    DeleteRemoteDocument(deletedDocument, deletedItem);
+                    try
+                    {
+                        IDocument deletedDocument = (IDocument)session.GetObjectByPath(deletedItem.RemotePath);
+                        DeleteRemoteDocument(deletedDocument, deletedItem);
+                    }
+                    catch (Exception e)
+                    {
+                        Logger.Error("Error applying local file deletion to the server: " + deletedFile, e);
+                        success = false;
+                    }
                 }
 
                 // Apply: Modified files.
                 foreach (string modifiedFile in modifiedFiles)
                 {
                     SyncItem modifiedItem = SyncItemFactory.CreateFromLocalPath(modifiedFile, true, repoInfo, database);
-                    IDocument modifiedDocument = (IDocument)session.GetObjectByPath(modifiedItem.RemotePath);
-                    UpdateFile(modifiedItem.LocalPath, modifiedDocument);
+                    try
+                    {
+                        IDocument modifiedDocument = (IDocument)session.GetObjectByPath(modifiedItem.RemotePath);
+                        UpdateFile(modifiedItem.LocalPath, modifiedDocument);
+                    }
+                    catch (Exception e)
+                    {
+                        Logger.Error("Error applying local file modification to the server: " + modifiedFile, e);
+                        success = false;
+                    }
                 }
 
                 // Apply: Added folders.
@@ -97,9 +127,16 @@ namespace CmisSync.Lib.Sync
                 {
                     string destinationFolderPath = Path.GetDirectoryName(addedFolder);
                     SyncItem folderItem = SyncItemFactory.CreateFromLocalPath(destinationFolderPath, true, repoInfo, database);
-
-                    IFolder destinationFolder = (IFolder)session.GetObjectByPath(folderItem.RemotePath);
-                    UploadFolderRecursively(destinationFolder, addedFolder);
+                    try
+                    {
+                        IFolder destinationFolder = (IFolder)session.GetObjectByPath(folderItem.RemotePath);
+                        UploadFolderRecursively(destinationFolder, addedFolder);
+                    }
+                    catch (Exception e)
+                    {
+                        Logger.Error("Error applying local folder addition to the server: " + addedFolder, e);
+                        success = false;
+                    }
                 }
 
                 // Apply: Added files.
@@ -107,13 +144,22 @@ namespace CmisSync.Lib.Sync
                 {
                     string destinationFolderPath = Path.GetDirectoryName(addedFile);
                     SyncItem folderItem = SyncItemFactory.CreateFromLocalPath(destinationFolderPath, true, repoInfo, database);
-
-                    IFolder destinationFolder = (IFolder)session.GetObjectByPath(folderItem.RemotePath);
-                    UploadFile(addedFile, destinationFolder);
+                    try
+                    {
+                        IFolder destinationFolder = (IFolder)session.GetObjectByPath(folderItem.RemotePath);
+                        UploadFile(addedFile, destinationFolder);
+                    }
+                    catch (Exception e)
+                    {
+                        Logger.Error("Error applying local file addition to the server: " + addedFile, e);
+                        success = false;
+                    }
                 }
 
                 Logger.Debug("Finished applying local changes.");
                 activityListener.ActivityStopped();
+
+                return success;
             }
 
             public void FindNewLocalObjects(string folder, ref List<string> addedFolders, ref List<string> addedFiles)
