@@ -614,6 +614,9 @@ namespace CmisSync.Lib
                 /// </summary>
                 public RepoInfo GetRepoInfo()
                 {
+                    // TODO: ワークアラウンド
+                    var localPath = LocalPath.TrimEnd(Path.DirectorySeparatorChar);
+
                     RepoInfo repoInfo = new RepoInfo(DisplayName, ConfigManager.CurrentConfig.ConfigPath);
                     repoInfo.User = UserName;
                     repoInfo.Password = new Password();
@@ -621,7 +624,7 @@ namespace CmisSync.Lib
                     repoInfo.Address = RemoteUrl;
                     repoInfo.RepoID = RepositoryId;
                     repoInfo.RemotePath = RemotePath;
-                    repoInfo.TargetDirectory = LocalPath;
+                    repoInfo.TargetDirectory = localPath;
                     repoInfo.MaxUploadRetries = uploadRetries;
                     repoInfo.MaxDownloadRetries = downloadRetries;
                     repoInfo.MaxDeletionRetries = deletionRetries;
