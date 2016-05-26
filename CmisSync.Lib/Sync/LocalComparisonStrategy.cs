@@ -29,8 +29,6 @@ namespace CmisSync.Lib.Sync
                 var addedFolders = new List<string>();
                 var addedFiles = new List<string>();
 
-                activityListener.ActivityStarted();
-
                 // Crawl through all entries in the database, and record the ones that have changed on the filesystem.
                 // Check for deleted folders.
                 var folders = database.GetLocalFolders();
@@ -93,12 +91,18 @@ namespace CmisSync.Lib.Sync
 
                 // TODO: Check local metadata modification cache.
 
-                Logger.Debug("Applying " +
-                    (deletedFolders.Count + deletedFiles.Count + modifiedFiles.Count + addedFolders.Count + addedFiles.Count)
-                    + " changes.");
+                int numberOfChanges = deletedFolders.Count + deletedFiles.Count + modifiedFiles.Count + addedFolders.Count + addedFiles.Count;
+                Logger.Debug(numberOfChanges + " local changes to apply.");
+
+                if (numberOfChanges == 0)
+                {
+                    return true; // Success: Did nothing.
+                }
 
                 // Apply changes to the server.
                 bool success = true;
+
+                activityListener.ActivityStarted();
 
                 // Apply: Deleted folders.
                 foreach(string deletedFolder in deletedFolders)
