@@ -18,7 +18,7 @@ namespace CmisSync.Lib.Sync
             /// Detect what has changed using the local database, and apply these
             /// modifications to the remote server.
             /// </summary>
-            /// <param name="rootFolder"></param>
+            /// <param name="rootFolder">Full path of the local synchronized folder, for instance "/User Homes/nicolas.raoul/demos"</param>
             public bool ApplyLocalChanges(string rootFolder)
             {
                 Logger.Debug("Checking for local changes");
@@ -60,12 +60,12 @@ namespace CmisSync.Lib.Sync
                 }
 
                 // Check for added folders and files.
-                // TODO performance improvement: To reduce the number of database requests, count files and folders, and skip this step if equal to the numbers of database rows.
+                // TODO performance improvement: To reduce the number of database requests, count files and folders, and skip this step if equal to the numbers of database rows?
                 FindNewLocalObjects(rootFolder, ref addedFolders, ref addedFiles);
 
                 // Ignore added files that are sub-items of an added folder.
                 // Folder addition is done recursively so no need to add files twice.
-                foreach (string file in new List<string>(addedFiles)) // Copy the list because to avoid modifying it while iterating.
+                foreach (string file in new List<string>(addedFiles)) // Copy the list to avoid modifying it while iterating.
                 {
                     foreach (string addedFolder in addedFolders)
                     {
@@ -76,9 +76,18 @@ namespace CmisSync.Lib.Sync
                     }
                 }
 
-                // Ignore removed files that are sub-items of a removed folder.
-                // Folder removal is done recursively so no need to remove files twice.
-                // TODO
+                // Ignore removed folders that are sub-items of a removed folder.
+                // Folder removal is done recursively so no need to remove sub-items twice.
+                foreach (string addedFolder in new List<string>(addedFolders)) // Copy the list to avoid modifying it while iterating.
+                {
+                    foreach (string otherAddedFolder in addedFolders)
+                    {
+                        if (addedFolder.StartsWith(otherAddedFolder))
+                        {
+                            addedFolders.Remove(addedFolder);
+                        }
+                    }
+                }
 
                 // TODO: Try to make sense of related changes, for instance renamed folders.
 
