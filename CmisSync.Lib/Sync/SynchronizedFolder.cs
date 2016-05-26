@@ -448,6 +448,9 @@ namespace CmisSync.Lib.Sync
                             CrawlSyncAndUpdateChangeLogToken(remoteFolder, remoteFolderPath, localFolder);
                         }
 
+                        // Compare locally, in case the watcher did not do its job correctly (that happens, Windows bug).
+                        ApplyLocalChanges(localFolder);
+
                         if (ChangeLogCapability)
                         {
                             Logger.Debug("Invoke a remote change log sync");
