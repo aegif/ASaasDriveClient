@@ -18,7 +18,7 @@ namespace CmisSync.Lib.Sync
             /// Detect what has changed using the local database, and apply these
             /// modifications to the remote server.
             /// </summary>
-            /// <param name="rootFolder"></param>
+            /// <param name="rootFolder">Full path of the local synchronized folder, for instance "/User Homes/nicolas.raoul/demos"</param>
             public bool ApplyLocalChanges(string rootFolder)
             {
                 Logger.Debug("Checking for local changes");
@@ -28,8 +28,6 @@ namespace CmisSync.Lib.Sync
                 var modifiedFiles = new List<string>();
                 var addedFolders = new List<string>();
                 var addedFiles = new List<string>();
-
-                activityListener.ActivityStarted();
 
                 // Crawl through all entries in the database, and record the ones that have changed on the filesystem.
                 // Check for deleted folders.
@@ -60,12 +58,12 @@ namespace CmisSync.Lib.Sync
                 }
 
                 // Check for added folders and files.
-                // TODO performance improvement: To reduce the number of database requests, count files and folders, and skip this step if equal to the numbers of database rows.
+                // TODO performance improvement: To reduce the number of database requests, count files and folders, and skip this step if equal to the numbers of database rows?
                 FindNewLocalObjects(rootFolder, ref addedFolders, ref addedFiles);
 
                 // Ignore added files that are sub-items of an added folder.
                 // Folder addition is done recursively so no need to add files twice.
-                foreach (string file in new List<string>(addedFiles)) // Copy the list because to avoid modifying it while iterating.
+                foreach (string file in new List<string>(addedFiles)) // Copy the list to avoid modifying it while iterating.
                 {
                     foreach (string addedFolder in addedFolders)
                     {
@@ -76,20 +74,35 @@ namespace CmisSync.Lib.Sync
                     }
                 }
 
-                // Ignore removed files that are sub-items of a removed folder.
-                // Folder removal is done recursively so no need to remove files twice.
-                // TODO
+                // Ignore removed folders that are sub-items of a removed folder.
+                // Folder removal is done recursively so no need to remove sub-items twice.
+                foreach (string addedFolder in new List<string>(addedFolders)) // Copy the list to avoid modifying it while iterating.
+                {
+                    foreach (string otherAddedFolder in addedFolders)
+                    {
+                        if (addedFolder.StartsWith(otherAddedFolder))
+                        {
+                            addedFolders.Remove(addedFolder);
+                        }
+                    }
+                }
 
                 // TODO: Try to make sense of related changes, for instance renamed folders.
 
                 // TODO: Check local metadata modification cache.
 
-                Logger.Debug("Applying " +
-                    (deletedFolders.Count + deletedFiles.Count + modifiedFiles.Count + addedFolders.Count + addedFiles.Count)
-                    + " changes.");
+                int numberOfChanges = deletedFolders.Count + deletedFiles.Count + modifiedFiles.Count + addedFolders.Count + addedFiles.Count;
+                Logger.Debug(numberOfChanges + " local changes to apply.");
+
+                if (numberOfChanges == 0)
+                {
+                    return true; // Success: Did nothing.
+                }
 
                 // Apply changes to the server.
                 bool success = true;
+
+                activityListener.ActivityStarted();
 
                 // Apply: Deleted folders.
                 foreach(string deletedFolder in deletedFolders)

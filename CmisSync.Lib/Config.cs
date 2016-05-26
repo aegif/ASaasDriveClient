@@ -670,6 +670,7 @@ namespace CmisSync.Lib
 
         /// <summary>
         /// User details.
+        /// TODO Not used anymore. Remove.
         /// </summary>
         public class User
         {
@@ -685,7 +686,9 @@ namespace CmisSync.Lib
             public string EMail { get; set; }
         }
 
-        /// <summary></summary>
+        /// <summary>
+        /// TODO Merge with CmisProfile?
+        /// </summary>
         public class Feature {
             /// <summary></summary>
             [XmlElement("getFolderTree", IsNullable=true)]
