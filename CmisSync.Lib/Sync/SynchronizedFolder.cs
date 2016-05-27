@@ -393,8 +393,8 @@ namespace CmisSync.Lib.Sync
                     if (session == null)
                     {
                         Connect();
-
-                        firstSync = true;
+                        
+                        firstSync = repoInfo.SyncAtStartup;
                     }
                     else
                     {
@@ -432,7 +432,7 @@ namespace CmisSync.Lib.Sync
 
                         // Full sync.
                         CrawlSync(remoteFolder, remoteFolderPath, localFolder);
-                        
+
                         firstSync = false;
                     }
                     else
