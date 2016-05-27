@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Linq;
 using DotCMIS.Client;
 using System.IO;
 using CmisSync.Lib.Database;
@@ -65,27 +66,18 @@ namespace CmisSync.Lib.Sync
                 // Folder addition is done recursively so no need to add files twice.
                 foreach (string file in new List<string>(addedFiles)) // Copy the list to avoid modifying it while iterating.
                 {
-                    foreach (string addedFolder in addedFolders)
-                    {
-                        if (file.StartsWith(addedFolder))
-                        {
-                            addedFiles.Remove(file);
-                        }
-                    }
+                    addedFolders.RemoveAll(p => file.StartsWith(p));
+
                 }
 
                 // Ignore removed folders that are sub-items of a removed folder.
                 // Folder removal is done recursively so no need to remove sub-items twice.
                 foreach (string addedFolder in new List<string>(addedFolders)) // Copy the list to avoid modifying it while iterating.
                 {
-                    foreach (string otherAddedFolder in addedFolders)
-                    {
-                        if (addedFolder.StartsWith(otherAddedFolder))
-                        {
-                            addedFolders.Remove(addedFolder);
-                        }
-                    }
+                    addedFolders.RemoveAll(p => addedFolder.StartsWith(p));
                 }
+                
+
 
                 // TODO: Try to make sense of related changes, for instance renamed folders.
 
