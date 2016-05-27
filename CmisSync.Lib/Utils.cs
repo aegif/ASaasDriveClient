@@ -601,5 +601,15 @@ namespace CmisSync.Lib
         {
             return Path.Combine(localFolderPath, @"..");
         }
+
+
+        /// <summary>
+        /// Says whether a folder contains another.
+        /// </summary>
+        public static bool FirstFolderContainsSecond(string containingFolder, string containedFolder)
+        {
+            return containedFolder.StartsWith(containingFolder)
+                && containedFolder.Length > containingFolder.Length; // False if same folder.
+        }
     }
 }

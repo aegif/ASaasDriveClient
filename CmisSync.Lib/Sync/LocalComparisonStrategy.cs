@@ -62,19 +62,15 @@ namespace CmisSync.Lib.Sync
                 // TODO performance improvement: To reduce the number of database requests, count files and folders, and skip this step if equal to the numbers of database rows?
                 FindNewLocalObjects(rootFolder, ref addedFolders, ref addedFiles);
 
-                // Ignore added files that are sub-items of an added folder.
-                // Folder addition is done recursively so no need to add files twice.
-                foreach (string file in new List<string>(addedFiles)) // Copy the list to avoid modifying it while iterating.
+                // Ignore deleted files and folders that are sub-items of a deleted folder.
+                // Folder removal is done recursively so removing sub-items would be redundant.
+                foreach (string deletedFolder in new List<string>(deletedFolders)) // Copy the list to avoid modifying it while iterating.
                 {
-                    addedFolders.RemoveAll(p => p.StartsWith(file) && p.Length > file.Length);
+                    // Ignore deleted files contained in the deleted folder.
+                    deletedFiles.RemoveAll(deletedFile => deletedFile.StartsWith(deletedFolder));
 
-                }
-
-                // Ignore removed folders that are sub-items of a removed folder.
-                // Folder removal is done recursively so no need to remove sub-items twice.
-                foreach (string addedFolder in new List<string>(addedFolders)) // Copy the list to avoid modifying it while iterating.
-                {
-                    addedFolders.RemoveAll(p => p.StartsWith(addedFolder) && p.Length > addedFolder.Length);
+                    // Ignore deleted folders contained in the deleted folder.
+                    deletedFolders.RemoveAll(otherDeletedFolder => Utils.FirstFolderContainsSecond(otherDeletedFolder, deletedFolder));
                 }
 
                 // TODO: Try to make sense of related changes, for instance renamed folders.
@@ -247,13 +243,16 @@ namespace CmisSync.Lib.Sync
                 {
                     // Check whether this sub-folder is present in database.
                     string folderPath = Path.Combine(folder, subFolder);
-                    if (!database.ContainsLocalPath(folderPath))
+                    if (database.ContainsLocalPath(folderPath))
                     {
+                        // Recurse.
+                        FindNewLocalObjects(folderPath, ref addedFolders, ref addedFiles);
+                    }
+                    else
+                    {
+                        // New folder, add to list and don't recurse.
                         addedFolders.Add(folderPath);
                     }
-
-                    // Recurse.
-                    FindNewLocalObjects(folderPath, ref addedFolders, ref addedFiles);
                 }
             }
         }
