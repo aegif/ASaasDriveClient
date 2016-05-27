@@ -66,7 +66,7 @@ namespace CmisSync.Lib.Sync
                 // Folder addition is done recursively so no need to add files twice.
                 foreach (string file in new List<string>(addedFiles)) // Copy the list to avoid modifying it while iterating.
                 {
-                    addedFolders.RemoveAll(p => file.StartsWith(p));
+                    addedFolders.RemoveAll(p => p.StartsWith(file) && p.Length > file.Length);
 
                 }
 
@@ -74,10 +74,8 @@ namespace CmisSync.Lib.Sync
                 // Folder removal is done recursively so no need to remove sub-items twice.
                 foreach (string addedFolder in new List<string>(addedFolders)) // Copy the list to avoid modifying it while iterating.
                 {
-                    addedFolders.RemoveAll(p => addedFolder.StartsWith(p));
+                    addedFolders.RemoveAll(p => p.StartsWith(addedFolder) && p.Length > addedFolder.Length);
                 }
-                
-
 
                 // TODO: Try to make sense of related changes, for instance renamed folders.
 
