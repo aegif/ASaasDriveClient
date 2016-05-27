@@ -22,59 +22,19 @@ namespace CmisSync.Lib.Sync
             /// <param name="rootFolder">Full path of the local synchronized folder, for instance "/User Homes/nicolas.raoul/demos"</param>
             public bool ApplyLocalChanges(string rootFolder)
             {
-                Logger.Debug("Checking for local changes");
-
                 var deletedFolders = new List<string>();
                 var deletedFiles = new List<string>();
                 var modifiedFiles = new List<string>();
                 var addedFolders = new List<string>();
                 var addedFiles = new List<string>();
 
-                // Crawl through all entries in the database, and record the ones that have changed on the filesystem.
-                // Check for deleted folders.
-                var folders = database.GetLocalFolders();
-                foreach(string folder in folders)
-                {
-                    if (!Directory.Exists(Utils.PathCombine(rootFolder, folder)))
-                    {
-                        deletedFolders.Add(folder);
-                    }
-                }
-                var files = database.GetChecksummedFiles();
-                foreach (ChecksummedFile file in files)
-                {
-                    // Check for deleted files.
-                    if (File.Exists(Path.Combine(rootFolder, file.RelativePath)))
-                    {
-                        // Check for modified files.
-                        if(file.HasChanged(rootFolder))
-                        {
-                            modifiedFiles.Add(file.RelativePath);
-                        }
-                    }
-                    else
-                    {
-                        deletedFiles.Add(file.RelativePath);
-                    }
-                }
-
                 // Check for added folders and files.
-                // TODO performance improvement: To reduce the number of database requests, count files and folders, and skip this step if equal to the numbers of database rows?
                 FindNewLocalObjects(rootFolder, ref addedFolders, ref addedFiles);
 
-                // Ignore deleted files and folders that are sub-items of a deleted folder.
-                // Folder removal is done recursively so removing sub-items would be redundant.
-                foreach (string deletedFolder in new List<string>(deletedFolders)) // Copy the list to avoid modifying it while iterating.
-                {
-                    // Ignore deleted files contained in the deleted folder.
-                    deletedFiles.RemoveAll(deletedFile => deletedFile.StartsWith(deletedFolder));
-
-                    // Ignore deleted folders contained in the deleted folder.
-                    deletedFolders.RemoveAll(otherDeletedFolder => Utils.FirstFolderContainsSecond(otherDeletedFolder, deletedFolder));
-                }
+                // Check for deleted and modified folders and files.
+                FindModifiedOrDeletedLocalObjects(rootFolder, ref deletedFolders, ref deletedFiles, ref modifiedFiles);
 
                 // TODO: Try to make sense of related changes, for instance renamed folders.
-
                 // TODO: Check local metadata modification cache.
 
                 int numberOfChanges = deletedFolders.Count + deletedFiles.Count + modifiedFiles.Count + addedFolders.Count + addedFiles.Count;
@@ -86,123 +46,22 @@ namespace CmisSync.Lib.Sync
                 }
 
                 // Apply changes to the server.
-                bool success = true;
-
                 activityListener.ActivityStarted();
-
-                // Apply: Deleted folders.
-                foreach(string deletedFolder in deletedFolders)
-                {
-                    SyncItem deletedItem = SyncItemFactory.CreateFromLocalPath(deletedFolder, true, repoInfo, database);
-                    try
-                    {
-                        IFolder deletedIFolder = (IFolder)session.GetObjectByPath(deletedItem.RemotePath);
-                        DeleteRemoteFolder(deletedIFolder, deletedItem, Utils.UpperFolderLocal(deletedItem.LocalPath));
-                    }
-                    catch (ArgumentNullException e)
-                    {
-                        // Typical error when the document does not exist anymore on the server
-                        // TODO Make DotCMIS generate a more precise exception.
-
-                        Logger.Error("The folder has probably been deleted on the server already: " + deletedFolder, e);
-
-                        // Delete local database entry.
-                        database.RemoveFolder(SyncItemFactory.CreateFromLocalPath(deletedFolder, true, repoInfo, database));
-
-                        // Note: This is not a failure per-se, so we don't need to modify the "success" variable.
-                    }
-                    catch (Exception e)
-                    {
-                        Logger.Error("Error applying local folder deletion to the server: " + deletedFolder, e);
-                        success = false;
-                    }
-                }
-
-                // Apply: Deleted files.
-                foreach (string deletedFile in deletedFiles)
-                {
-                    SyncItem deletedItem = SyncItemFactory.CreateFromLocalPath(deletedFile, true, repoInfo, database);
-                    try
-                    {
-                        IDocument deletedDocument = (IDocument)session.GetObjectByPath(deletedItem.RemotePath);
-                        DeleteRemoteDocument(deletedDocument, deletedItem);
-                    }
-                    catch (ArgumentNullException e)
-                    {
-                        // Typical error when the document does not exist anymore on the server
-                        // TODO Make DotCMIS generate a more precise exception.
-
-                        Logger.Error("The document has probably been deleted on the server already: " + deletedFile, e);
-
-                        // Delete local database entry.
-                        database.RemoveFile(SyncItemFactory.CreateFromLocalPath(deletedFile, false, repoInfo, database));
-
-                        // Note: This is not a failure per-se, so we don't need to modify the "success" variable.
-                    }
-                    catch (Exception e)
-                    {
-                        // Could be a network error.
-                        Logger.Error("Error applying local file deletion to the server: " + deletedFile, e);
-                        success = false;
-                    }
-                }
-
-                // Apply: Modified files.
-                foreach (string modifiedFile in modifiedFiles)
-                {
-                    SyncItem modifiedItem = SyncItemFactory.CreateFromLocalPath(modifiedFile, true, repoInfo, database);
-                    try
-                    {
-                        IDocument modifiedDocument = (IDocument)session.GetObjectByPath(modifiedItem.RemotePath);
-                        UpdateFile(modifiedItem.LocalPath, modifiedDocument);
-                    }
-                    catch (Exception e)
-                    {
-                        Logger.Error("Error applying local file modification to the server: " + modifiedFile, e);
-                        success = false;
-                    }
-                }
-
-                // Apply: Added folders.
-                foreach (string addedFolder in addedFolders)
-                {
-                    string destinationFolderPath = Path.GetDirectoryName(addedFolder);
-                    SyncItem folderItem = SyncItemFactory.CreateFromLocalPath(destinationFolderPath, true, repoInfo, database);
-                    try
-                    {
-                        IFolder destinationFolder = (IFolder)session.GetObjectByPath(folderItem.RemotePath);
-                        UploadFolderRecursively(destinationFolder, addedFolder);
-                    }
-                    catch (Exception e)
-                    {
-                        Logger.Error("Error applying local folder addition to the server: " + addedFolder, e);
-                        success = false;
-                    }
-                }
-
-                // Apply: Added files.
-                foreach (string addedFile in addedFiles)
-                {
-                    string destinationFolderPath = Path.GetDirectoryName(addedFile);
-                    SyncItem folderItem = SyncItemFactory.CreateFromLocalPath(destinationFolderPath, true, repoInfo, database);
-                    try
-                    {
-                        IFolder destinationFolder = (IFolder)session.GetObjectByPath(folderItem.RemotePath);
-                        UploadFile(addedFile, destinationFolder);
-                    }
-                    catch (Exception e)
-                    {
-                        Logger.Error("Error applying local file addition to the server: " + addedFile, e);
-                        success = false;
-                    }
-                }
+                bool success = ApplyDeletedFolders(ref deletedFolders);
+                success &= ApplyDeletedFiles(ref deletedFiles);
+                success &= ApplyModifiedFiles(ref modifiedFiles);
+                success &= ApplyAddedFolders(ref addedFolders);
+                success &= ApplyAddedFiles(ref addedFiles);
 
                 Logger.Debug("Finished applying local changes.");
                 activityListener.ActivityStopped();
-
                 return success;
             }
 
+
+            /// <summary>
+            /// Check for added folders and files.
+            /// </summary>
             public void FindNewLocalObjects(string folder, ref List<string> addedFolders, ref List<string> addedFiles)
             {
                 // Check files in this folder.
@@ -254,6 +113,200 @@ namespace CmisSync.Lib.Sync
                         addedFolders.Add(folderPath);
                     }
                 }
+            }
+
+
+            /// <summary>
+            /// Check for deleted and modified folders and files.
+            /// </summary>
+            public void FindModifiedOrDeletedLocalObjects(String rootFolder, ref List<string> deletedFolders,
+                ref List<string> deletedFiles, ref List<string> modifiedFiles)
+            {
+                // Crawl through all entries in the database, and record the ones that have changed on the filesystem.
+                // Check for deleted folders.
+                var folders = database.GetLocalFolders();
+                foreach (string folder in folders)
+                {
+                    if (!Directory.Exists(Utils.PathCombine(rootFolder, folder)))
+                    {
+                        deletedFolders.Add(folder);
+                    }
+                }
+                var files = database.GetChecksummedFiles();
+                foreach (ChecksummedFile file in files)
+                {
+                    // Check for deleted files.
+                    if (File.Exists(Path.Combine(rootFolder, file.RelativePath)))
+                    {
+                        // Check for modified files.
+                        if (file.HasChanged(rootFolder))
+                        {
+                            modifiedFiles.Add(file.RelativePath);
+                        }
+                    }
+                    else
+                    {
+                        deletedFiles.Add(file.RelativePath);
+                    }
+                }
+
+                // Ignore deleted files and folders that are sub-items of a deleted folder.
+                // Folder removal is done recursively so removing sub-items would be redundant.
+                foreach (string deletedFolder in new List<string>(deletedFolders)) // Copy the list to avoid modifying it while iterating.
+                {
+                    // Ignore deleted files contained in the deleted folder.
+                    deletedFiles.RemoveAll(deletedFile => deletedFile.StartsWith(deletedFolder));
+
+                    // Ignore deleted folders contained in the deleted folder.
+                    deletedFolders.RemoveAll(otherDeletedFolder => Utils.FirstFolderContainsSecond(otherDeletedFolder, deletedFolder));
+                }
+            }
+
+
+            /// <summary>
+            /// Apply: Deleted folders.
+            /// </summary>
+            public bool ApplyDeletedFolders(ref List<string> deletedFolders)
+            {
+                bool success = true;
+                foreach (string deletedFolder in deletedFolders)
+                {
+                    SyncItem deletedItem = SyncItemFactory.CreateFromLocalPath(deletedFolder, true, repoInfo, database);
+                    try
+                    {
+                        IFolder deletedIFolder = (IFolder)session.GetObjectByPath(deletedItem.RemotePath);
+                        DeleteRemoteFolder(deletedIFolder, deletedItem, Utils.UpperFolderLocal(deletedItem.LocalPath));
+                    }
+                    catch (ArgumentNullException e)
+                    {
+                        // Typical error when the document does not exist anymore on the server
+                        // TODO Make DotCMIS generate a more precise exception.
+
+                        Logger.Error("The folder has probably been deleted on the server already: " + deletedFolder, e);
+
+                        // Delete local database entry.
+                        database.RemoveFolder(SyncItemFactory.CreateFromLocalPath(deletedFolder, true, repoInfo, database));
+
+                        // Note: This is not a failure per-se, so we don't need to modify the "success" variable.
+                    }
+                    catch (Exception e)
+                    {
+                        Logger.Error("Error applying local folder deletion to the server: " + deletedFolder, e);
+                        success = false;
+                    }
+                }
+                return success;
+            }
+
+
+            /// <summary>
+            /// Apply: Deleted files.
+            /// </summary>
+            public bool ApplyDeletedFiles(ref List<string> deletedFiles)
+            {
+                bool success = true;
+                foreach (string deletedFile in deletedFiles)
+                {
+                    SyncItem deletedItem = SyncItemFactory.CreateFromLocalPath(deletedFile, true, repoInfo, database);
+                    try
+                    {
+                        IDocument deletedDocument = (IDocument)session.GetObjectByPath(deletedItem.RemotePath);
+                        DeleteRemoteDocument(deletedDocument, deletedItem);
+                    }
+                    catch (ArgumentNullException e)
+                    {
+                        // Typical error when the document does not exist anymore on the server
+                        // TODO Make DotCMIS generate a more precise exception.
+
+                        Logger.Error("The document has probably been deleted on the server already: " + deletedFile, e);
+
+                        // Delete local database entry.
+                        database.RemoveFile(SyncItemFactory.CreateFromLocalPath(deletedFile, false, repoInfo, database));
+
+                        // Note: This is not a failure per-se, so we don't need to modify the "success" variable.
+                    }
+                    catch (Exception e)
+                    {
+                        // Could be a network error.
+                        Logger.Error("Error applying local file deletion to the server: " + deletedFile, e);
+                        success = false;
+                    }
+                }
+                return success;
+            }
+
+
+            /// <summary>
+            /// Apply: Modified files.
+            /// </summary>
+            public bool ApplyModifiedFiles(ref List<string> modifiedFiles)
+            {
+                bool success = true;
+                foreach (string modifiedFile in modifiedFiles)
+                {
+                    SyncItem modifiedItem = SyncItemFactory.CreateFromLocalPath(modifiedFile, true, repoInfo, database);
+                    try
+                    {
+                        IDocument modifiedDocument = (IDocument)session.GetObjectByPath(modifiedItem.RemotePath);
+                        UpdateFile(modifiedItem.LocalPath, modifiedDocument);
+                    }
+                    catch (Exception e)
+                    {
+                        Logger.Error("Error applying local file modification to the server: " + modifiedFile, e);
+                        success = false;
+                    }
+                }
+                return success;
+            }
+
+
+            /// <summary>
+            /// Apply: Added folders.
+            /// </summary>
+            public bool ApplyAddedFolders(ref List<string> addedFolders)
+            {
+                bool success = true;
+                foreach (string addedFolder in addedFolders)
+                {
+                    string destinationFolderPath = Path.GetDirectoryName(addedFolder);
+                    SyncItem folderItem = SyncItemFactory.CreateFromLocalPath(destinationFolderPath, true, repoInfo, database);
+                    try
+                    {
+                        IFolder destinationFolder = (IFolder)session.GetObjectByPath(folderItem.RemotePath);
+                        UploadFolderRecursively(destinationFolder, addedFolder);
+                    }
+                    catch (Exception e)
+                    {
+                        Logger.Error("Error applying local folder addition to the server: " + addedFolder, e);
+                        success = false;
+                    }
+                }
+                return success;
+            }
+
+
+            /// <summary>
+            /// Apply: Added files.
+            /// </summary>
+            public bool ApplyAddedFiles(ref List<string> addedFiles)
+            {
+                bool success = true;
+                foreach (string addedFile in addedFiles)
+                {
+                    string destinationFolderPath = Path.GetDirectoryName(addedFile);
+                    SyncItem folderItem = SyncItemFactory.CreateFromLocalPath(destinationFolderPath, true, repoInfo, database);
+                    try
+                    {
+                        IFolder destinationFolder = (IFolder)session.GetObjectByPath(folderItem.RemotePath);
+                        UploadFile(addedFile, destinationFolder);
+                    }
+                    catch (Exception e)
+                    {
+                        Logger.Error("Error applying local file addition to the server: " + addedFile, e);
+                        success = false;
+                    }
+                }
+                return success;
             }
         }
     }
