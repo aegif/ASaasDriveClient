@@ -100,7 +100,7 @@ namespace CmisSync.Lib.Sync
 
 
             /// <summary>
-            /// An event was received from the filesystem watcher, analyze the change and apply it.
+            /// An move event was received from the filesystem watcher, analyze the change and apply it.
             /// <returns>Whether the move has now been synchronized, so that no further action is needed</returns>
             /// </summary>
             private bool WatchSyncMove(string remoteFolder, string localFolder, string oldPathname, string newPathname)
@@ -108,35 +108,40 @@ namespace CmisSync.Lib.Sync
                 bool success = true;
                 SleepWhileSuspended();
 
-                // Old item.
-                string oldDirectory = Path.GetDirectoryName(oldPathname);
-                string oldFilename = Path.GetFileName(oldPathname);
-                string oldLocalName = oldPathname.Substring(localFolder.Length + 1);
-                SyncItem oldItem = database.GetSyncItemFromLocalPath(oldPathname);
-                string oldRemoteName = oldItem.RemotePath;
-                string oldRemoteBaseName = CmisUtils.GetUpperFolderOfCmisPath(oldRemoteName);
-                bool oldPathnameWorthSyncing = Utils.WorthSyncing(oldDirectory, oldFilename, repoInfo);
-
-                // New item.
-                bool isFolder = Utils.IsFolder(newPathname);
-                string newDirectory = Path.GetDirectoryName(newPathname); // TODO do this only if isFolder is true, modify rest of the logic accordingly.
-                string newFilename = Path.GetFileName(newPathname);
-                string newLocalName = newPathname.Substring(localFolder.Length + 1);
-                SyncItem newItem = SyncItemFactory.CreateFromLocalPath(newPathname, isFolder, repoInfo, database);
-                string newRemoteName = newItem.RemotePath;
-                string newRemoteBaseName = CmisUtils.GetUpperFolderOfCmisPath(newRemoteName);
-                bool newPathnameWorthSyncing = Utils.WorthSyncing(newDirectory, newFilename, repoInfo);
-
-                // Operations.
-                bool rename = oldDirectory.Equals(newDirectory) && !oldFilename.Equals(newFilename);
-                bool move = !oldDirectory.Equals(newDirectory) && oldFilename.Equals(newFilename);
-                if ((rename && move) || (!rename && !move))
-                {
-                    Logger.ErrorFormat("Not a valid rename/move: {0} -> {1}", oldPathname, newPathname);
-                    return true; // It is not our problem that watcher data is not valid.
-                }
                 try
                 {
+                    // Old item.
+                    string oldDirectory = Path.GetDirectoryName(oldPathname);
+                    string oldFilename = Path.GetFileName(oldPathname);
+                    string oldLocalName = oldPathname.Substring(localFolder.Length + 1);
+                    SyncItem oldItem = database.GetSyncItemFromLocalPath(oldPathname);
+                    if (oldItem == null)
+                    {
+                        // The change is about a file which was not in database yet, we can't move it. Further action is needed.
+                        return false;
+                    }
+                    string oldRemoteName = oldItem.RemotePath;
+                    string oldRemoteBaseName = CmisUtils.GetUpperFolderOfCmisPath(oldRemoteName);
+                    bool oldPathnameWorthSyncing = Utils.WorthSyncing(oldDirectory, oldFilename, repoInfo);
+
+                    // New item.
+                    bool isFolder = Utils.IsFolder(newPathname);
+                    string newDirectory = Path.GetDirectoryName(newPathname); // TODO do this only if isFolder is true, modify rest of the logic accordingly.
+                    string newFilename = Path.GetFileName(newPathname);
+                    string newLocalName = newPathname.Substring(localFolder.Length + 1);
+                    SyncItem newItem = SyncItemFactory.CreateFromLocalPath(newPathname, isFolder, repoInfo, database);
+                    string newRemoteName = newItem.RemotePath;
+                    string newRemoteBaseName = CmisUtils.GetUpperFolderOfCmisPath(newRemoteName);
+                    bool newPathnameWorthSyncing = Utils.WorthSyncing(newDirectory, newFilename, repoInfo);
+
+                    // Operations.
+                    bool rename = oldDirectory.Equals(newDirectory) && !oldFilename.Equals(newFilename);
+                    bool move = !oldDirectory.Equals(newDirectory) && oldFilename.Equals(newFilename);
+                    if ((rename && move) || (!rename && !move))
+                    {
+                        Logger.ErrorFormat("Not a valid rename/move: {0} -> {1}", oldPathname, newPathname);
+                        return true; // It is not our problem that watcher data is not valid.
+                    }
                     if (oldPathnameWorthSyncing && newPathnameWorthSyncing)
                     {
                         if (database.ContainsLocalFile(oldPathname))
@@ -238,16 +243,13 @@ namespace CmisSync.Lib.Sync
                 }
                 try
                 {
-                    string localName = localPath.Substring(localFolder.Length + 1);
-                    bool isFolder = Utils.IsFolder(localPath);
-
-                    SyncItem item = SyncItemFactory.CreateFromLocalPath(localPath, isFolder, repoInfo, database);
-                    
                     // Get the remote directory, needed by the update method.
-                    string remoteName = item.RemotePath;
                     IFolder remoteBase = null;
                     if (File.Exists(localPath) || Directory.Exists(localPath))
                     {
+                        bool isFolder = Utils.IsFolder(localPath);
+                        SyncItem item = SyncItemFactory.CreateFromLocalPath(localPath, isFolder, repoInfo, database);
+
                         string remoteBaseName = CmisUtils.GetUpperFolderOfCmisPath(item.RemotePath);
                         remoteBase = (IFolder)session.GetObjectByPath(remoteBaseName);
                         if (null == remoteBase)
