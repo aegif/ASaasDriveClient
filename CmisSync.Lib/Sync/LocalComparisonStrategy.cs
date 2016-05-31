@@ -22,40 +22,42 @@ namespace CmisSync.Lib.Sync
             /// <param name="rootFolder">Full path of the local synchronized folder, for instance "/User Homes/nicolas.raoul/demos"</param>
             public bool ApplyLocalChanges(string rootFolder)
             {
-                var deletedFolders = new List<string>();
-                var deletedFiles = new List<string>();
-                var modifiedFiles = new List<string>();
-                var addedFolders = new List<string>();
-                var addedFiles = new List<string>();
+                try {
+                    var deletedFolders = new List<string>();
+                    var deletedFiles = new List<string>();
+                    var modifiedFiles = new List<string>();
+                    var addedFolders = new List<string>();
+                    var addedFiles = new List<string>();
 
-                // Check for added folders and files.
-                FindNewLocalObjects(rootFolder, ref addedFolders, ref addedFiles);
+                    // Check for added folders and files.
+                    FindNewLocalObjects(rootFolder, ref addedFolders, ref addedFiles);
 
-                // Check for deleted and modified folders and files.
-                FindModifiedOrDeletedLocalObjects(rootFolder, ref deletedFolders, ref deletedFiles, ref modifiedFiles);
+                    // Check for deleted and modified folders and files.
+                    FindModifiedOrDeletedLocalObjects(rootFolder, ref deletedFolders, ref deletedFiles, ref modifiedFiles);
 
-                // TODO: Try to make sense of related changes, for instance renamed folders.
-                // TODO: Check local metadata modification cache.
+                    // TODO: Try to make sense of related changes, for instance renamed folders.
+                    // TODO: Check local metadata modification cache.
 
-                int numberOfChanges = deletedFolders.Count + deletedFiles.Count + modifiedFiles.Count + addedFolders.Count + addedFiles.Count;
-                Logger.Debug(numberOfChanges + " local changes to apply.");
+                    int numberOfChanges = deletedFolders.Count + deletedFiles.Count + modifiedFiles.Count + addedFolders.Count + addedFiles.Count;
+                    Logger.Debug(numberOfChanges + " local changes to apply.");
 
-                if (numberOfChanges == 0)
-                {
-                    return true; // Success: Did nothing.
+                    if (numberOfChanges == 0) {
+                        return true; // Success: Did nothing.
+                    }
+
+                    // Apply changes to the server.
+                    activityListener.ActivityStarted();
+                    bool success = ApplyDeletedFolders(ref deletedFolders);
+                    success &= ApplyDeletedFiles(ref deletedFiles);
+                    success &= ApplyModifiedFiles(ref modifiedFiles);
+                    success &= ApplyAddedFolders(ref addedFolders);
+                    success &= ApplyAddedFiles(ref addedFiles);
+
+                    Logger.Debug("Finished applying local changes.");
+                    return success;
+                }finally {
+                    activityListener.ActivityStopped();
                 }
-
-                // Apply changes to the server.
-                activityListener.ActivityStarted();
-                bool success = ApplyDeletedFolders(ref deletedFolders);
-                success &= ApplyDeletedFiles(ref deletedFiles);
-                success &= ApplyModifiedFiles(ref modifiedFiles);
-                success &= ApplyAddedFolders(ref addedFolders);
-                success &= ApplyAddedFiles(ref addedFiles);
-
-                Logger.Debug("Finished applying local changes.");
-                activityListener.ActivityStopped();
-                return success;
             }
 
 
