@@ -352,16 +352,18 @@ namespace CmisSync
         {
             lock (this.repo_lock)
             {
-                //TODO: why are we suspending all repositories instead of the one passed?
                 foreach (RepoBase aRepo in this.repositories)
                 {
-                    if (aRepo.Status != SyncStatus.Suspend)
+                    if(aRepo.Name.Equals(repoName))
                     {
-                        SuspendRepositorySynchronization(repoName);
-                    }
-                    else
-                    {
-                        ResumeRepositorySynchronization(repoName);
+                        if (aRepo.Status != SyncStatus.Suspend)
+                        {
+                            SuspendRepositorySynchronization(repoName);
+                        }
+                        else
+                        {
+                            ResumeRepositorySynchronization(repoName);
+                        }
                     }
                 }
             }
