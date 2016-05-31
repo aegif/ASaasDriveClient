@@ -369,6 +369,7 @@ namespace CmisSync
             }
         }
 
+
         /// <summary>
         /// Pause synchronization for a particular folder.
         /// </summary>
@@ -377,17 +378,20 @@ namespace CmisSync
         {
             lock (this.repo_lock)
             {
-                //TODO: why are we suspending all repositories instead of the one passed?
                 foreach (RepoBase aRepo in this.repositories)
                 {
-                    if (aRepo.Status != SyncStatus.Suspend)
+                    if (aRepo.Name.Equals(repoName))
                     {
-                        aRepo.Suspend();
-                        Logger.Debug("Requested to suspend sync of repo " + aRepo.Name);
-                    }
+                        if (aRepo.Status != SyncStatus.Suspend)
+                        {
+                            aRepo.Suspend();
+                            Logger.Debug("Requested to suspend sync of repo " + aRepo.Name);
                         }
+                    }
+                }
             }
         }
+
 
         /// <summary>
         /// Un-pause synchronization for a particular folder.
@@ -397,10 +401,11 @@ namespace CmisSync
         {
             lock (this.repo_lock)
             {
-                //TODO: why are we suspending all repositories instead of the one passed?
                 foreach (RepoBase aRepo in this.repositories)
                 {
-                    if (aRepo.Status == SyncStatus.Suspend)
+                    if (aRepo.Name.Equals(repoName))
+                    {
+                        if (aRepo.Status == SyncStatus.Suspend)
                         {
                             aRepo.Resume();
                             Logger.Debug("Requested to resume sync of repo " + aRepo.Name);
@@ -408,6 +413,8 @@ namespace CmisSync
                     }
                 }
             }
+        }
+
 
         /// <summary>
         /// Check the configured CmisSync synchronized folders.
