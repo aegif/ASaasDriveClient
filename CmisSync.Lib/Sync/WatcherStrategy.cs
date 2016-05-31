@@ -217,10 +217,15 @@ namespace CmisSync.Lib.Sync
                         //Neither old or new path worth syncing
                     }
                 }
+                catch (FileNotFoundException e)
+                {
+                    success = false;
+                    Logger.Warn("Could process watcher sync move, file or folder not found: " + oldPathname + " -> " + newPathname, e);
+                }
                 catch (Exception e)
                 {
                     success = false;
-                    ProcessRecoverableException("Could process watcher sync move: " + oldPathname + " -> " + newPathname, e);
+                    ProcessRecoverableException("Could not process watcher sync move: " + oldPathname + " -> " + newPathname, e);
                 }
                 return success;
             }
