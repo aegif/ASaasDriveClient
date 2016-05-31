@@ -360,7 +360,7 @@ namespace CmisSync.Lib
         {
             get
             {
-                return Utils.PathCombine(localRoot, LocalRelativePath);
+                return Path.Combine(localRoot, LocalRelativePath);
             }
         }
 
@@ -369,7 +369,7 @@ namespace CmisSync.Lib
         {
             get
             {
-                return remoteRoot + CmisUtils.CMIS_FILE_SEPARATOR + RemoteRelativePath;
+                return Utils.PathCombine(remoteRoot , RemoteRelativePath);
             }
         }
 
