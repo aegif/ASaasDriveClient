@@ -1072,7 +1072,6 @@ namespace CmisSync.Lib.Sync
                 {
                     syncItem = SyncItemFactory.CreateFromLocalPath(filePath, false, repoInfo, database);
                 }
-                Logger.Info("Uploading: " + syncItem.LocalPath);
 
                 try
                 {
@@ -1098,10 +1097,9 @@ namespace CmisSync.Lib.Sync
                         contentStream.Length = file.Length;
                         contentStream.Stream = hashstream;
 
-                        Logger.Debug("Uploading: " + syncItem.LocalPath + " as "
-                            + remoteFolder.Path + "/" + remoteFileName);
+                        Logger.InfoFormat("Uploading: {0} as {1}/{2}",syncItem.LocalPath, remoteFolder.Path, remoteFileName);
                         remoteDocument = remoteFolder.CreateDocument(properties, contentStream, null);
-                        Logger.Debug("Uploaded: " + syncItem.LocalPath);
+                        Logger.InfoFormat("Uploaded: {0}", syncItem.LocalPath);
                         filehash = hashAlg.Hash;
                     }
 
