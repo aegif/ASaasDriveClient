@@ -92,18 +92,15 @@ namespace CmisSync.Lib.Database
         {
             this.databaseFileName = databaseFileName;
             this.localPathPrefix = localPathPrefix;
+            
             this.localPathPrefixSize = localPathPrefix.Length;
-            if (!remotePathPrefix.Equals("/"))
+            if ( ! remotePathPrefix.Equals(Cmis.CmisUtils.CMIS_FILE_SEPARATOR))
             {
                 this.localPathPrefixSize += 1;
             }
 
             this.remotePathPrefix = remotePathPrefix;
-            this.remotePathPrefixSize = remotePathPrefix.Length;
-            if (!remotePathPrefix.Equals("/"))
-            {
-                this.remotePathPrefixSize += 1;
-            }
+            this.remotePathPrefixSize = remotePathPrefix.Length + 1;
         }
 
         /// <summary>
@@ -154,7 +151,7 @@ namespace CmisSync.Lib.Database
             {
                 try
                 {
-                    Logger.Info(String.Format("Checking whether database {0} exists", Path.GetFileName(databaseFileName) ));
+                    Logger.Info(String.Format("Checking whether database {0} exists", databaseFileName));
                     bool createDatabase = !File.Exists(databaseFileName);
 
                     sqliteConnection = new SQLiteConnection("Data Source=" + databaseFileName + ";PRAGMA journal_mode=WAL");
@@ -233,8 +230,6 @@ namespace CmisSync.Lib.Database
             {
                 // Remove path prefix
                 path = path.Substring(localPathPrefixSize, path.Length - localPathPrefixSize);
-                // RemoveLocalPrefix all slashes to forward slash
-                //path = path.Replace('\\', '/');
             }
             return path;
         }
@@ -766,7 +761,7 @@ namespace CmisSync.Lib.Database
                 return;
             }
 
-            string localPath = RemoveLocalPrefix(syncItem.LocalPath);
+            string localPath = RemoveLocalPrefix(syncItem.LocalPath); // TODO use relative localpath method of SyncItem
 
             string command = @"UPDATE files
                     SET checksum=@checksum
@@ -779,22 +774,24 @@ namespace CmisSync.Lib.Database
 
         /// <summary>
         /// Checks whether the database contains a given item.
+        /// Local filename is often different from remote document name.
         /// </summary>
-        /// <param name="item"></param>
-        /// <returns></returns>
-        public bool ContainsFile(SyncItem item)
+        public bool ContainsLocalFile(string localPath)
+        {
+            string normalizedLocalPath = RemoveLocalPrefix(localPath);
+            Dictionary<string, object> parameters = new Dictionary<string, object>();
+            parameters.Add("localPath", normalizedLocalPath);
+            return null != ExecuteSQLFunction("SELECT serverSideModificationDate FROM files WHERE localPath=@localPath", parameters);
+        }
+
+        /// <summary>
+        /// Checks whether the database contains a given item.
+        /// </summary>
+        public bool ContainsRemoteFile(string remoteRelativePath)
         {
             Dictionary<string, object> parameters = new Dictionary<string, object>();
-            if (item is RemotePathSyncItem)
-            {
-                parameters.Add("path", item.RemoteRelativePath);
-                return null != ExecuteSQLFunction("SELECT serverSideModificationDate FROM files WHERE path=@path", parameters);
-            }
-            else
-            {
-                parameters.Add("localPath", item.LocalRelativePath);
-                return null != ExecuteSQLFunction("SELECT serverSideModificationDate FROM files WHERE localPath=@localPath", parameters);
-            }
+            parameters.Add("path", remoteRelativePath);
+            return null != ExecuteSQLFunction("SELECT serverSideModificationDate FROM files WHERE path=@path", parameters);
         }
 
         /// <summary>
@@ -806,6 +803,42 @@ namespace CmisSync.Lib.Database
             Dictionary<string, object> parameters = new Dictionary<string, object>();
             parameters.Add("id", id);
             return Denormalize((string)ExecuteSQLFunction("SELECT path FROM files WHERE id=@id", parameters));
+        }
+
+        /// <summary>
+        /// Return the remote path of an item identified by its local path.
+        /// If no such item exist yet in database (ex: new local file), returns the remote path it should be written to.
+        /// </summary>
+        public string RemoteToLocal(string remotePath, bool isFolder)
+        {
+            string normalizedRemotePath = RemoveLocalPrefix(remotePath);
+            Dictionary<string, object> parameters = new Dictionary<string, object>();
+            parameters.Add("remotePath", normalizedRemotePath);
+            string table = isFolder ? "folders" : "files";
+            string localPath = (string)ExecuteSQLFunction("SELECT localPath FROM " + table + " WHERE path=@remotePath", parameters);
+            if (string.IsNullOrEmpty(localPath))
+            {
+                return PathRepresentationConverter.RemoteToLocal(remotePath);
+            }
+            return localPath;
+        }
+
+        /// <summary>
+        /// Return the local path of an item identified by its remote path.
+        /// If no such item exist yet in database (ex: new remote file), returns the local path it should be written to.
+        /// </summary>
+        public string LocalToRemote(string localPath, bool isFolder)
+        {
+            string normalizedLocalPath = RemoveLocalPrefix(localPath);
+            Dictionary<string, object> parameters = new Dictionary<string, object>();
+            parameters.Add("localPath", normalizedLocalPath);
+            string table = isFolder ? "folders" : "files";
+            string remotePath = (string)ExecuteSQLFunction("SELECT path FROM " + table + " WHERE localPath=@localPath", parameters);
+            if (string.IsNullOrEmpty(remotePath))
+            {
+                return PathRepresentationConverter.LocalToRemote(localPath);
+            }
+            return remotePath;
         }
 
         /// <summary>
@@ -821,7 +854,7 @@ namespace CmisSync.Lib.Database
             string remotePath = (string)result["path"];
             object localPathObj = result["localPath"];
             string localPath = (localPathObj is DBNull) ? remotePath : (string)localPathObj;
-            return SyncItemFactory.CreateFromPaths(localPathPrefix, localPath, remotePathPrefix, remotePath);
+            return SyncItemFactory.CreateFromPaths(localPathPrefix, localPath, remotePathPrefix, remotePath, false);
         }
 
         /// <summary>
@@ -834,13 +867,20 @@ namespace CmisSync.Lib.Database
             string normalizedLocalPath = RemoveLocalPrefix(localPath);
             Dictionary<string, object> parameters = new Dictionary<string, object>();
             parameters.Add("localPath", normalizedLocalPath);
+
+            // Try to find it in files database.
             string path = (string)ExecuteSQLFunction("SELECT path FROM files WHERE localPath=@localPath", parameters);
             if (string.IsNullOrEmpty(path))
             {
-                return null;
+                // Try to find it in folders database.
+                path = (string)ExecuteSQLFunction("SELECT path FROM folders WHERE localPath=@localPath", parameters);
+                if (string.IsNullOrEmpty(path))
+                {
+                    return null;
+                }
             }
 
-            return SyncItemFactory.CreateFromPaths(localPathPrefix, normalizedLocalPath, remotePathPrefix, path);
+            return SyncItemFactory.CreateFromPaths(localPathPrefix, normalizedLocalPath, remotePathPrefix, path, false);
         }
 
         /// <summary>
@@ -859,7 +899,7 @@ namespace CmisSync.Lib.Database
                 return null;
             }
 
-            return SyncItemFactory.CreateFromPaths(localPathPrefix, localPath, remotePathPrefix, normalizedRemotePath);
+            return SyncItemFactory.CreateFromPaths(localPathPrefix, localPath, remotePathPrefix, normalizedRemotePath, false);
         }
 
         /// <summary>
@@ -878,7 +918,7 @@ namespace CmisSync.Lib.Database
                 return null;
             }
 
-            return SyncItemFactory.CreateFromPaths(localPathPrefix, normalizedLocalPath, remotePathPrefix, path);
+            return SyncItemFactory.CreateFromPaths(localPathPrefix, normalizedLocalPath, remotePathPrefix, path, true);
         }
 
         /// <summary>
@@ -897,7 +937,7 @@ namespace CmisSync.Lib.Database
                 return null;
             }
 
-            return SyncItemFactory.CreateFromPaths(localPathPrefix, localPath, remotePathPrefix, normalizedRemotePath);
+            return SyncItemFactory.CreateFromPaths(localPathPrefix, localPath, remotePathPrefix, normalizedRemotePath, true);
         }
 
         /// <summary>
@@ -995,7 +1035,7 @@ namespace CmisSync.Lib.Database
             string res = (string)ExecuteSQLFunction(command, parameters);
             if(string.IsNullOrEmpty(res))
             {
-                Logger.Debug("GetCheckSum return null for path=" + path + ", localRelativePath=" + localRelativePath);
+                Logger.Debug("GetCheckSum returns null for path=" + path + ", localRelativePath=" + localRelativePath);
             }
             return res;
         }
@@ -1090,13 +1130,42 @@ namespace CmisSync.Lib.Database
         /// </summary>
         /// <returns><c>true</c>, if folder identifier was containsed, <c>false</c> otherwise.</returns>
         /// <param name="path">Path.</param>
-        public bool ContainsFolderId(string path)
+        public bool ContainsLocalPath(string localPath)
         {
-            path = RemoveLocalPrefix(path);
+            localPath = RemoveLocalPrefix(localPath);
             var parameters = new Dictionary<string, object>();
-            parameters.Add("@path", path);
-            return null != ExecuteSQLFunction("SELECT id FROM folders WHERE path = @path;", parameters);
+            parameters.Add("@localPath", localPath);
+            return null != ExecuteSQLFunction("SELECT id FROM folders WHERE localPath = @localPath;", parameters);
         }
+
+
+        public List<string> GetLocalFolders()
+        {
+            var folders = new List<string>();
+            SQLiteCommand command = new SQLiteCommand("SELECT localPath FROM folders;", GetSQLiteConnection());
+            SQLiteDataReader reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                string folder = (string)reader["localPath"];
+                folders.Add(folder);
+            }
+            return folders;
+        }
+
+
+        public List<ChecksummedFile> GetChecksummedFiles()
+        {
+            List<ChecksummedFile> result = new List<ChecksummedFile>();
+            SQLiteCommand command = new SQLiteCommand("SELECT path, checksum FROM files;", GetSQLiteConnection());
+            SQLiteDataReader reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                ChecksummedFile file = new ChecksummedFile((string)reader["path"], (string)reader["checksum"]);
+                result.Add(file);
+            }
+            return result;
+        }
+
 
         /// <summary>
         /// Helper method to execute an SQL command that does not return anything.
@@ -1222,6 +1291,36 @@ namespace CmisSync.Lib.Database
                 default:
                     return "";
             }
+        }
+    }
+
+
+    /// <summary>
+    /// A file and its checksum.
+    /// </summary>
+    public class ChecksummedFile
+    {
+        /// <summary>
+        /// Path to the file, relative to the root of the synchronized folder.
+        /// </summary>
+        public string RelativePath { get; private set; }
+
+        /// <summary>
+        /// Checksum stored in the local database for that file.
+        /// Thus it is the checksum of the file after the previous synchronization.
+        /// </summary>
+        private string checksum;
+
+        public ChecksummedFile(string relativePath, string checksum)
+        {
+            this.RelativePath = relativePath;
+            this.checksum = checksum;
+        }
+
+        public bool HasChanged(string rootFolder)
+        {
+            string newChecksum = Database.Checksum(Utils.PathCombine(rootFolder, RelativePath));
+            return ! newChecksum.Equals(checksum);
         }
     }
 }

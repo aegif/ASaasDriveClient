@@ -27,12 +27,11 @@ namespace CmisSync.Lib
     public static class Backend {
 
         /// <summary>
-        /// Version of ASaaD Drive
-        /// It is also used as the ASaasDrive version. 
+        /// Version of A-SaaS Drive.
         /// </summary>
         public static string Version {
             get {
-                return String.Empty + Assembly.GetEntryAssembly ().GetName ().Version;
+                return String.Empty + Assembly.GetEntryAssembly().GetName().Version;
             }
         }
 

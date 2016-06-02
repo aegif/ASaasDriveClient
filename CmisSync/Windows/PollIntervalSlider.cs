@@ -66,14 +66,20 @@ namespace CmisSync
             this.Ticks = tickMarks;
 
             // Show current value in UI.
-            this.PollInterval = defaultValue;
+            ShowCurrentValue();
         }
-        protected override void OnValueChanged(double oldValue, double newValue) {
-            base.OnValueChanged(oldValue, newValue);
 
+        protected override void OnThumbDragStarted(DragStartedEventArgs e)
+        {
+            base.OnThumbDragStarted(e);
             this.ShowCurrentValue();
         }
 
+        protected override void OnThumbDragDelta(DragDeltaEventArgs e)
+        {
+            base.OnThumbDragDelta(e);
+            this.ShowCurrentValue();
+        }
 
         /// <summary></summary>
         /// <returns></returns>

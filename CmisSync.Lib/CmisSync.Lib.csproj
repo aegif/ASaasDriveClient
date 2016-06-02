@@ -50,9 +50,8 @@
     <Optimize>false</Optimize>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Newtonsoft.Json, Version=7.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <HintPath>..\CmisSync\Windows\packages\Newtonsoft.Json.7.0.1\lib\net40\Newtonsoft.Json.dll</HintPath>
-      <Private>True</Private>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>..\Extras\OpenDataSpaceDotCMIS\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
@@ -67,6 +66,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ChunkedStream.cs" />
+    <Compile Include="Cmis\CmisProfile.cs" />
     <Compile Include="Database\DatabaseMigrationBase.cs" />
     <Compile Include="Database\DatabaseMigration.cs" />
     <Compile Include="Events\ActiveActivitiesManager.cs" />
@@ -82,6 +82,7 @@
     <Compile Include="Events\SyncEventManager.cs" />
     <Compile Include="Events\SyncEventQueue.cs" />
     <Compile Include="Sync\ChangeLogThenCrawlStrategy.cs" />
+    <Compile Include="Sync\LocalComparisonStrategy.cs" />
     <Compile Include="UserNotificationListener.cs" />
     <Compile Include="Cmis\BaseException.cs" />
     <Compile Include="Database\Database.cs" />
@@ -123,9 +124,6 @@
       <Project>{529EF90F-A34C-4426-A4F9-65113AC23841}</Project>
       <Name>DotCMIS</Name>
     </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ProjectExtensions>

@@ -10,6 +10,7 @@ using System.Security.Permissions;
 
 using System.Text.RegularExpressions;
 using System.Reflection;
+using CmisSync.Lib.Cmis;
 #if __MonoCS__ && !__COCOA__
 using Mono.Unix.Native;
 #endif
@@ -186,7 +187,7 @@ namespace CmisSync.Lib
             }
 
             // Check resulting file path length
-            string fullPath = PathCombine(localDirectory, filename);
+            string fullPath = Path.Combine(localDirectory, filename);
 
             #if __COCOA__ || __MonoCS__
             // TODO Check filename length for OS X
@@ -219,37 +220,33 @@ namespace CmisSync.Lib
         /// </summary>
         public static bool IsDirectoryWorthSyncing(string localDirectory, RepoInfo repoInfo)
         {
-            // Normalize dir separator.
-            var localDirPath = Path.GetFullPath(localDirectory + Path.AltDirectorySeparatorChar);
-            var targetDirPath = Path.GetFullPath(repoInfo.TargetDirectory + Path.AltDirectorySeparatorChar);
-
-            if (!localDirPath.StartsWith(targetDirPath))
+            if (!localDirectory.StartsWith(repoInfo.TargetDirectory))
             {
-                Logger.WarnFormat("Local directory is outside repo target directory.  local={0}, repo={1}", localDirPath, targetDirPath);
+                Logger.WarnFormat("Local directory is outside repo target directory.  local={0}, repo={1}", localDirectory, repoInfo.TargetDirectory);
                 return false;
             }
 
             //Check for ignored path...
-            string path = localDirPath.Substring(targetDirPath.Length).Replace("\\", "/");
+            string path = localDirectory.Substring(repoInfo.TargetDirectory.Length).Replace("\\", "/");
             if (repoInfo.isPathIgnored(path))
             {
-                Logger.DebugFormat("Skipping {0}: hidden folder", localDirPath);
+                Logger.DebugFormat("Skipping {0}: hidden folder", localDirectory);
                 return false;
 
             }
 
             //Check system/hidden
-            DirectoryInfo directoryInfo = new DirectoryInfo(localDirPath);
+            DirectoryInfo directoryInfo = new DirectoryInfo(localDirectory);
             if (directoryInfo.Exists)
             {
                 if (directoryInfo.Attributes.HasFlag(FileAttributes.Hidden))
                 {
-                    Logger.DebugFormat("Skipping {0}: hidden folder", localDirPath);
+                    Logger.DebugFormat("Skipping {0}: hidden folder", localDirectory);
                     return false;
                 }
                 if (directoryInfo.Attributes.HasFlag(FileAttributes.System))
                 {
-                    Logger.DebugFormat("Skipping {0}: system folder", localDirPath);
+                    Logger.DebugFormat("Skipping {0}: system folder", localDirectory);
                     return false;
                 }
 
@@ -257,6 +254,7 @@ namespace CmisSync.Lib
 
             return true;
         }
+
 
         /// <summary>
         /// Check whether the file is worth syncing or not.
@@ -276,24 +274,24 @@ namespace CmisSync.Lib
                 if (fileInfo.Attributes.HasFlag(FileAttributes.Hidden))
 
                 {
-                    Logger.DebugFormat("Skipping {0}: hidden file", filepath);
+                    Logger.InfoFormat("Skipping {0}: hidden file", filepath);
                     return false;
                 }
                 if (fileInfo.Attributes.HasFlag(FileAttributes.System))
                 {
-                    Logger.DebugFormat("Skipping {0}: system file", filepath);
+                    Logger.InfoFormat("Skipping {0}: system file", filepath);
                     return false;
                 }
 
                 //Check filesize
                 if (!allowBlankFiles && fileInfo.Length <= 0)
                 {
-                    Logger.DebugFormat("Skipping {0}: blank file", filepath);
+                    Logger.InfoFormat("Skipping {0}: blank file", filepath);
                     return false;
                 }
                 if (limitFilesize && fileInfo.Length > filesizeLimit)
                 {
-                    Logger.DebugFormat("Skipping {0}: file too large {1}MB", filepath, fileInfo.Length / (1024f * 1024f));
+                    Logger.InfoFormat("Skipping {0}: file too large {1}MB", filepath, fileInfo.Length / (1024f * 1024f));
                     return false;
                 }
 
@@ -305,6 +303,7 @@ namespace CmisSync.Lib
             return true;
         }
 
+
         /// <summary>
         /// Check whether the file is worth syncing or not.
         /// Files that are not worth syncing include temp files, locks, etc.
@@ -313,20 +312,9 @@ namespace CmisSync.Lib
         {
             return IsFilenameWorthSyncing(localDirectory, filename) &&
                 IsDirectoryWorthSyncing(localDirectory, repoInfo) &&
-                IsFileWorthSyncing(PathCombine(localDirectory, filename), repoInfo);
+                IsFileWorthSyncing(Path.Combine(localDirectory, filename), repoInfo);
         }
 
-        /// <summary>
-        /// Determines whether this instance is valid ISO-8859-1 specified input.
-        /// </summary>
-        /// <param name="input">If set to <c>true</c> input.</param>
-        /// <returns><c>true</c> if this instance is valid ISO-8859-1 specified input; otherwise, <c>false</c>.</returns>
-        public static bool IsValidISO88591(string input)
-        {
-            byte[] bytes = Encoding.GetEncoding(28591).GetBytes(input);
-            String result = Encoding.GetEncoding(28591).GetString(bytes);
-            return String.Equals(input, result);
-        }
 
         /// <summary>
         /// Check whether the file is worth syncing or not.
@@ -376,6 +364,7 @@ namespace CmisSync.Lib
             return ret;
         }
 
+
         /// <summary>
         /// Regular expression to check whether a file name is valid or not.
         /// In particular, CmisSync forbids characters that would not be allowed on Windows:
@@ -383,6 +372,7 @@ namespace CmisSync.Lib
         /// </summary>
         private static Regex invalidFileNameRegex = new Regex(
             "[" + Regex.Escape(new string(Path.GetInvalidFileNameChars())+"\"?:/\\|<>*") + "]");
+
 
         /// <summary>
         /// Check whether a folder name is valid or not.
@@ -401,19 +391,11 @@ namespace CmisSync.Lib
 
 
         /// <summary>
-        /// Like Path.Combine, but does not choke on special characters.
-        /// Special characters are a separate concern, use this method if it is not the current concern.
-        /// </summary>
-        public static string PathCombine(string localDirectory, string filename)
-        {
-            return localDirectory + Path.DirectorySeparatorChar + filename;
-        }
-
-        /// <summary>
         /// Regular expression to check whether a filename is valid or not.
         /// </summary>
         private static Regex invalidFolderNameRegex = new Regex(
             "[" + Regex.Escape(new string(Path.GetInvalidPathChars())+"\"?:/\\|<>*") + "]");
+
 
         /// <summary>
         /// Find an available conflict free filename for this file.
@@ -453,6 +435,7 @@ namespace CmisSync.Lib
             }
         }
 
+
         /// <summary>
         /// Format a file size nicely.
         /// Example: 1048576 becomes "1 MB"
@@ -470,6 +453,7 @@ namespace CmisSync.Lib
             else
                 return byteCount.ToString() + " bytes";
         }
+
 
         /// <summary>
         /// Formats the bandwidth in typical 10 based calculation
@@ -494,6 +478,7 @@ namespace CmisSync.Lib
                 return bitsPerSecond.ToString() + " Bit/s";
         }
 
+
         /// <summary>
         /// Format a file size nicely.
         /// Example: 1048576 becomes "1 MB"
@@ -502,6 +487,7 @@ namespace CmisSync.Lib
         {
             return FormatSize((double) byteCount);
         }
+
 
         /// <summary>
         /// Formats the bandwidth in typical 10 based calculation
@@ -517,6 +503,28 @@ namespace CmisSync.Lib
             return FormatBandwidth((double) bitsPerSecond);
         }
 
+
+        /// <summary>
+        /// Check whether an URL is valid or not.
+        /// </summary>
+        public static bool IsvalidURL(string url)
+        {
+            Uri uri;
+            return Uri.TryCreate(url, UriKind.Absolute, out uri)
+                && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
+        }
+
+
+        /// <summary>
+        /// Whether a path points to a local directory or not.
+        /// Must be an absolute local path.
+        /// </summary>
+        public static bool IsFolder(string path)
+        {
+            return File.GetAttributes(path).HasFlag(FileAttributes.Directory);
+        }
+
+
         /// <summary>
         /// Whether a file or directory is a symbolic link.
         /// </summary>
@@ -530,6 +538,7 @@ namespace CmisSync.Lib
                 return IsSymlink(dirinfo);
             return false;
         }
+
 
         /// <summary>
         /// Determines whether this instance is a symlink the specified FileSystemInfo.
@@ -560,16 +569,6 @@ namespace CmisSync.Lib
             File.Delete(filePath);
         }
 
-        /// <summary>
-        /// Get the last part of a CMIS path
-        /// Example: "/the/path/< 9000/theleaf" returns "theleaf"
-        /// Why not use Path.GetFileName ? Because it chokes on characters that are not authorized on the local filesystem.
-        /// </summary>
-        /// <returns></returns>
-        public static string GetLeafOfCmisPath(string cmisPath)
-        {
-            return cmisPath.Split('/').Last();
-        }
 
         public static void ConfigureLogging()
         {
@@ -582,6 +581,35 @@ namespace CmisSync.Lib
             {
                 log4net.Config.XmlConfigurator.Configure(ConfigManager.CurrentConfig.GetLog4NetConfig());
             }
+        }
+
+
+        /// <summary>
+        /// Like Path.Combine, but does not choke on special characters.
+        /// Special characters are a separate concern, use this method if it is not the current concern.
+        /// </summary>
+        public static string PathCombine(string localDirectory, string filename)
+        {
+            return localDirectory + Path.DirectorySeparatorChar + filename;
+        }
+
+
+        /// <summary>
+        /// Get the upper folder of a local path.
+        /// </summary>
+        public static string UpperFolderLocal(string localFolderPath)
+        {
+            return Path.GetFullPath(Path.Combine(localFolderPath, @".."));
+        }
+
+
+        /// <summary>
+        /// Says whether a folder contains another.
+        /// </summary>
+        public static bool FirstFolderContainsSecond(string containingFolder, string containedFolder)
+        {
+            return containedFolder.StartsWith(containingFolder)
+                && containedFolder.Length > containingFolder.Length; // False if same folder.
         }
     }
 }

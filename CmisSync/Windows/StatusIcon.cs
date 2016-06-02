@@ -26,10 +26,6 @@ namespace CmisSync
         /// </summary>
         private ContextMenuStrip traymenu = new ContextMenuStrip();
 
-        public void MenuRefresh() {
-            traymenu.Refresh();
-        }
-
         /// <summary>
         /// Windows object for the status icon.
         /// </summary>
@@ -316,8 +312,9 @@ namespace CmisSync
 
                     // Add the sub-items.
                     subfolderItem.DropDownItems.Add(openLocalFolderItem);
-                    // Remove for ASaas-Drive CmisSync
-                    // subfolderItem.DropDownItems.Add(openRemoteFolderItem);
+                    
+                    // subfolderItem.DropDownItems.Add(openRemoteFolderItem); // Removed for ASaas-Drive
+
                     subfolderItem.DropDownItems.Add(new ToolStripSeparator());
                     subfolderItem.DropDownItems.Add(suspendFolderItem);
                     subfolderItem.DropDownItems.Add(manualSyncItem);
@@ -352,7 +349,6 @@ namespace CmisSync
                     Controller.AddRemoteFolderClicked();
                     CreateMenu();
                     traymenu.Refresh();
-
                 };
                 this.traymenu.Items.Add(addFolderItem);
                 this.traymenu.Items.Add(new ToolStripSeparator());

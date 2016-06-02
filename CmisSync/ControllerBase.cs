@@ -1,4 +1,4 @@
-﻿//   CmisSync, a collaboration and sharing tool.
+//   CmisSync, a collaboration and sharing tool.
 //   Copyright (C) 2010  Hylke Bons <hylkebons@gmail.com>
 //
 //   This program is free software: you can redistribute it and/or modify
@@ -352,20 +352,23 @@ namespace CmisSync
         {
             lock (this.repo_lock)
             {
-                //FIXME: why are we sospendig all repositories instead of the one passed?
                 foreach (RepoBase aRepo in this.repositories)
                 {
-                    if (aRepo.Status != SyncStatus.Suspend)
+                    if(aRepo.Name.Equals(repoName))
                     {
-                        SuspendRepositorySynchronization(repoName);
-                    }
-                    else
-                    {
-                        ResumeRepositorySynchronization(repoName);
+                        if (aRepo.Status != SyncStatus.Suspend)
+                        {
+                            SuspendRepositorySynchronization(repoName);
+                        }
+                        else
+                        {
+                            ResumeRepositorySynchronization(repoName);
+                        }
                     }
                 }
             }
         }
+
 
         /// <summary>
         /// Pause synchronization for a particular folder.
@@ -375,17 +378,20 @@ namespace CmisSync
         {
             lock (this.repo_lock)
             {
-                //FIXME: why are we sospendig all repositories instead of the one passed?
                 foreach (RepoBase aRepo in this.repositories)
                 {
-                    if (aRepo.Status != SyncStatus.Suspend)
+                    if (aRepo.Name.Equals(repoName))
                     {
-                        aRepo.Suspend();
-                        Logger.Debug("Requested to suspend sync of repo " + aRepo.Name);
-                    }
+                        if (aRepo.Status != SyncStatus.Suspend)
+                        {
+                            aRepo.Suspend();
+                            Logger.Debug("Requested to suspend sync of repo " + aRepo.Name);
                         }
+                    }
+                }
             }
         }
+
 
         /// <summary>
         /// Un-pause synchronization for a particular folder.
@@ -395,10 +401,11 @@ namespace CmisSync
         {
             lock (this.repo_lock)
             {
-                //FIXME: why are we sospendig all repositories instead of the one passed?
                 foreach (RepoBase aRepo in this.repositories)
                 {
-                    if (aRepo.Status == SyncStatus.Suspend)
+                    if (aRepo.Name.Equals(repoName))
+                    {
+                        if (aRepo.Status == SyncStatus.Suspend)
                         {
                             aRepo.Resume();
                             Logger.Debug("Requested to resume sync of repo " + aRepo.Name);
@@ -406,6 +413,8 @@ namespace CmisSync
                     }
                 }
             }
+        }
+
 
         /// <summary>
         /// Check the configured CmisSync synchronized folders.
@@ -582,7 +591,7 @@ namespace CmisSync
         /// </summary>
         public void ActivityError(Tuple<string, Exception> error)
         {
-            //FIXME: why a Tuple? We should get delegate(ErrorEvent event) or delegate(string repoName, Exception error)
+            //TODO: why a Tuple? We should get delegate(ErrorEvent event) or delegate(string repoName, Exception error)
             OnError(error);
         }
     }

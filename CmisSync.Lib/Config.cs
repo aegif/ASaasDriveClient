@@ -32,8 +32,12 @@ namespace CmisSync.Lib
     public class Config
     {
 
-        public static readonly string SYNC_ROOTFOLDER_NAME = "ASaaSDrive";
         public static readonly string DEFAULT_URL_ADDRESS = "https://cloud.nemakiware.com/core/atom";
+
+        /// <summary>
+        /// Name of the folder where folders get synchronized to by default.
+        /// </summary>
+        public static readonly string SYNC_ROOTFOLDER_NAME = "ASaaSDrive";
 
         /// <summary>
         /// The current config schema version.
@@ -52,7 +56,7 @@ namespace CmisSync.Lib
         /// It is used for any newly created synchronized folder.
         /// In milliseconds.
         /// </summary>
-        public static readonly int DEFAULT_POLL_INTERVAL = 5 * 1000; // 3 miniutes.
+        public static readonly int DEFAULT_POLL_INTERVAL = 10 * 1000;  // 10 seconds.
 
 
         /// <summary>
@@ -153,7 +157,7 @@ namespace CmisSync.Lib
 
 
         /// <summary>
-        /// Path where the synchronized folders are stored by default.
+        /// Path of the folder where the synchronized folders are stored to by default.
         /// </summary>
         public string FoldersPath
         {
@@ -610,6 +614,9 @@ namespace CmisSync.Lib
                 /// </summary>
                 public RepoInfo GetRepoInfo()
                 {
+                    // TODO: ワークアラウンド
+                    var localPath = LocalPath.TrimEnd(Path.DirectorySeparatorChar);
+
                     RepoInfo repoInfo = new RepoInfo(DisplayName, ConfigManager.CurrentConfig.ConfigPath);
                     repoInfo.User = UserName;
                     repoInfo.Password = new Password();
@@ -617,7 +624,7 @@ namespace CmisSync.Lib
                     repoInfo.Address = RemoteUrl;
                     repoInfo.RepoID = RepositoryId;
                     repoInfo.RemotePath = RemotePath;
-                    repoInfo.TargetDirectory = LocalPath;
+                    repoInfo.TargetDirectory = localPath;
                     repoInfo.MaxUploadRetries = uploadRetries;
                     repoInfo.MaxDownloadRetries = downloadRetries;
                     repoInfo.MaxDeletionRetries = deletionRetries;
@@ -663,6 +670,7 @@ namespace CmisSync.Lib
 
         /// <summary>
         /// User details.
+        /// TODO Not used anymore. Remove.
         /// </summary>
         public class User
         {
@@ -678,7 +686,9 @@ namespace CmisSync.Lib
             public string EMail { get; set; }
         }
 
-        /// <summary></summary>
+        /// <summary>
+        /// TODO Merge with CmisProfile?
+        /// </summary>
         public class Feature {
             /// <summary></summary>
             [XmlElement("getFolderTree", IsNullable=true)]
