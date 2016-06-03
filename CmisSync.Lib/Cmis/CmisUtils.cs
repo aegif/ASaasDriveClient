@@ -537,6 +537,18 @@ namespace CmisSync.Lib.Cmis
 
         public static bool DocumentExists(ISession session, string path)
         {
+            return ItemExistsWithType(session, path, DotCMIS.Enums.BaseTypeId.CmisDocument);
+        }
+
+
+        public static bool FolderExists(ISession session, string path)
+        {
+            return ItemExistsWithType(session, path, DotCMIS.Enums.BaseTypeId.CmisFolder);
+        }
+
+
+        public static bool ItemExistsWithType(ISession session, string path, DotCMIS.Enums.BaseTypeId type)
+        {
             try
             {
                 ICmisObject cmisObject = session.GetObjectByPath(path);
@@ -546,8 +558,8 @@ namespace CmisSync.Lib.Cmis
                     return false;
                 }
                 
-                return cmisObject.ObjectType.BaseTypeId.Equals(DotCMIS.Enums.BaseTypeId.CmisDocument)
-                    || cmisObject.ObjectType.GetBaseType().BaseTypeId.Equals(DotCMIS.Enums.BaseTypeId.CmisDocument);
+                return cmisObject.ObjectType.BaseTypeId.Equals(type)
+                    || cmisObject.ObjectType.GetBaseType().BaseTypeId.Equals(type);
             }
             catch (ArgumentNullException e)
             {
