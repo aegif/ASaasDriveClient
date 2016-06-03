@@ -533,5 +533,27 @@ namespace CmisSync.Lib.Cmis
         {
             return session.RepositoryInfo.ProductName.Contains("Documentum");
         }
+
+
+        public static bool DocumentExists(ISession session, string path)
+        {
+            try
+            {
+                ICmisObject cmisObject = session.GetObjectByPath(path);
+                
+                if (cmisObject == null)
+                {
+                    return false;
+                }
+                
+                return cmisObject.ObjectType.BaseTypeId.Equals(DotCMIS.Enums.BaseTypeId.CmisDocument)
+                    || cmisObject.ObjectType.GetBaseType().BaseTypeId.Equals(DotCMIS.Enums.BaseTypeId.CmisDocument);
+            }
+            catch (ArgumentNullException e)
+            {
+                // In DotCMIS, this exception actually means that the document does not exist.
+                return false;
+            }
+        }
     }
 }

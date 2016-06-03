@@ -5,6 +5,7 @@ using System.Linq;
 using DotCMIS.Client;
 using System.IO;
 using CmisSync.Lib.Database;
+using CmisSync.Lib.Cmis;
 
 namespace CmisSync.Lib.Sync
 {
@@ -278,16 +279,7 @@ namespace CmisSync.Lib.Sync
                     {
                         IDocument modifiedDocument = (IDocument)session.GetObjectByPath(modifiedItem.RemotePath);
 
-                        // Fill documents list, needed by the crawl method.
-                        IList<string> remoteFiles = new List<string>();
-                        ICmisObject cmisObject = session.GetObjectByPath(modifiedItem.RemotePath);
-                        bool remoteFileExists = cmisObject.ObjectType.BaseTypeId.Equals(DotCMIS.Enums.BaseTypeId.CmisDocument)
-                            || cmisObject.ObjectType.GetBaseType().BaseTypeId.Equals(DotCMIS.Enums.BaseTypeId.CmisDocument);
-                        if (remoteFileExists)
-                        {
-                            remoteFiles.Add(modifiedItem.RemoteLeafname);
-                        }
-
+                        IList<string> remoteFiles = new List<string>(); // Needed by the crawl method.
                         CrawlRemoteDocument(modifiedDocument, modifiedItem.RemotePath, modifiedItem.LocalPath, remoteFiles);
                     }
                     catch (Exception e)
@@ -346,10 +338,8 @@ namespace CmisSync.Lib.Sync
 
                         // Fill documents list, needed by the crawl method.
                         IList<string> remoteFiles = new List<string>();
-                        ICmisObject cmisObject = session.GetObjectByPath(fileItem.RemotePath);
-                        bool remoteFileExists = cmisObject.ObjectType.BaseTypeId.Equals(DotCMIS.Enums.BaseTypeId.CmisDocument)
-                            || cmisObject.ObjectType.GetBaseType().BaseTypeId.Equals(DotCMIS.Enums.BaseTypeId.CmisDocument);
-                        if (remoteFileExists)
+
+                        if (CmisUtils.DocumentExists(session, fileItem.RemotePath))
                         {
                             remoteFiles.Add(fileItem.RemoteLeafname);
                         }
