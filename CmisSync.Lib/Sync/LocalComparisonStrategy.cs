@@ -22,7 +22,8 @@ namespace CmisSync.Lib.Sync
             /// <param name="rootFolder">Full path of the local synchronized folder, for instance "/User Homes/nicolas.raoul/demos"</param>
             public bool ApplyLocalChanges(string rootFolder)
             {
-                try {
+                try
+                {
                     var deletedFolders = new List<string>();
                     var deletedFiles = new List<string>();
                     var modifiedFiles = new List<string>();
@@ -41,7 +42,8 @@ namespace CmisSync.Lib.Sync
                     int numberOfChanges = deletedFolders.Count + deletedFiles.Count + modifiedFiles.Count + addedFolders.Count + addedFiles.Count;
                     Logger.Debug(numberOfChanges + " local changes to apply.");
 
-                    if (numberOfChanges == 0) {
+                    if (numberOfChanges == 0)
+                    {
                         return true; // Success: Did nothing.
                     }
 
@@ -55,7 +57,9 @@ namespace CmisSync.Lib.Sync
 
                     Logger.Debug("Finished applying local changes.");
                     return success;
-                }finally {
+                }
+                finally
+                {
                     activityListener.ActivityStopped();
                 }
             }
@@ -177,7 +181,27 @@ namespace CmisSync.Lib.Sync
                     try
                     {
                         IFolder deletedIFolder = (IFolder)session.GetObjectByPath(deletedItem.RemotePath);
-                        DeleteRemoteFolder(deletedIFolder, deletedItem, Utils.UpperFolderLocal(deletedItem.LocalPath));
+
+
+                        //CrawlSync(deletedIFolder, deletedItem.RemotePath, deletedFolder);
+
+                        // Needed by the normal crawl, but actually not used in our particular case here.
+                        IList<string> remoteSubfolders = new List<string>(); 
+                        CrawlRemoteFolder(deletedIFolder, deletedItem.RemotePath, deletedItem.LocalPath, remoteSubfolders);
+
+                        /*
+                        // Check whether the remote folder has changes we haven't gotten yet (conflict)
+                        bool changed = HasFolderChanged(deletedFolder, deletedIFolder);
+
+                        // Delete the remote folder if unchanged, otherwise let full sync handle the conflict.
+                        if (changed)
+                        {
+                            return false;
+                        }
+                        else
+                        {
+                            DeleteRemoteFolder(deletedIFolder, deletedItem, Utils.UpperFolderLocal(deletedItem.LocalPath));
+                        }*/
                     }
                     catch (ArgumentNullException e)
                     {
@@ -213,7 +237,10 @@ namespace CmisSync.Lib.Sync
                     try
                     {
                         IDocument deletedDocument = (IDocument)session.GetObjectByPath(deletedItem.RemotePath);
-                        DeleteRemoteDocument(deletedDocument, deletedItem);
+
+                        // Needed by the normal crawl, but actually not used in our particular case here.
+                        IList<string> remoteFiles = new List<string>();
+                        CrawlRemoteDocument(deletedDocument, deletedItem.RemotePath, deletedItem.LocalPath, remoteFiles);
                     }
                     catch (ArgumentNullException e)
                     {
@@ -250,7 +277,10 @@ namespace CmisSync.Lib.Sync
                     try
                     {
                         IDocument modifiedDocument = (IDocument)session.GetObjectByPath(modifiedItem.RemotePath);
-                        UpdateFile(modifiedItem.LocalPath, modifiedDocument);
+
+                        // Needed by the normal crawl, but actually not used in our particular case here.
+                        IList<string> remoteFiles = new List<string>();
+                        CrawlRemoteDocument(modifiedDocument, modifiedItem.RemotePath, modifiedItem.LocalPath, remoteFiles);
                     }
                     catch (Exception e)
                     {
@@ -271,11 +301,15 @@ namespace CmisSync.Lib.Sync
                 foreach (string addedFolder in addedFolders)
                 {
                     string destinationFolderPath = Path.GetDirectoryName(addedFolder);
-                    SyncItem folderItem = SyncItemFactory.CreateFromLocalPath(destinationFolderPath, true, repoInfo, database);
+                    SyncItem destinationFolderItem = SyncItemFactory.CreateFromLocalPath(destinationFolderPath, true, repoInfo, database);
+                    SyncItem addedFolderItem = SyncItemFactory.CreateFromLocalPath(addedFolder, true, repoInfo, database);
                     try
                     {
-                        IFolder destinationFolder = (IFolder)session.GetObjectByPath(folderItem.RemotePath);
-                        UploadFolderRecursively(destinationFolder, addedFolder);
+                        IFolder destinationFolder = (IFolder)session.GetObjectByPath(destinationFolderItem.RemotePath);
+
+                        IList<string> remoteFolders = new List<string>();
+                        CrawlLocalFolder(addedFolderItem.LocalPath, destinationFolder, remoteFolders);
+                        //UploadFolderRecursively(destinationFolder, addedFolder);
                     }
                     catch (Exception e)
                     {
@@ -297,10 +331,15 @@ namespace CmisSync.Lib.Sync
                 {
                     string destinationFolderPath = Path.GetDirectoryName(addedFile);
                     SyncItem folderItem = SyncItemFactory.CreateFromLocalPath(destinationFolderPath, true, repoInfo, database);
+                    SyncItem fileItem = SyncItemFactory.CreateFromLocalPath(addedFile, false, repoInfo, database);
                     try
                     {
                         IFolder destinationFolder = (IFolder)session.GetObjectByPath(folderItem.RemotePath);
-                        UploadFile(addedFile, destinationFolder);
+
+                        // Needed by the normal crawl, but actually not used in our particular case here.
+                        IList<string> remoteFiles = new List<string>();
+                        CrawlLocalFile(fileItem.LocalPath, destinationFolder, remoteFiles);
+                        //UploadFile(addedFile, destinationFolder);
                     }
                     catch (Exception e)
                     {
