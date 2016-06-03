@@ -599,7 +599,7 @@ namespace CmisSync.Lib
         /// </summary>
         public static string UpperFolderLocal(string localFolderPath)
         {
-            return Path.Combine(localFolderPath, @"..");
+            return Path.GetFullPath(Path.Combine(localFolderPath, @".."));
         }
 
 
