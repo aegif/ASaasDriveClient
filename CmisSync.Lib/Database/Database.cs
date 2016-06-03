@@ -100,7 +100,10 @@ namespace CmisSync.Lib.Database
             }
 
             this.remotePathPrefix = remotePathPrefix;
-            this.remotePathPrefixSize = remotePathPrefix.Length + 1;
+            this.remotePathPrefixSize = remotePathPrefix.Length;
+            if (! remotePathPrefix.EndsWith(Cmis.CmisUtils.CMIS_FILE_SEPARATOR.ToString() )) {
+                this.remotePathPrefixSize += 1;
+            }
         }
 
         /// <summary>
@@ -851,10 +854,15 @@ namespace CmisSync.Lib.Database
             Dictionary<string, object> parameters = new Dictionary<string, object>();
             parameters.Add("id", id);
             var result = ExecuteSQL("SELECT path, localPath FROM files WHERE id=@id", parameters);
-            string remotePath = (string)result["path"];
-            object localPathObj = result["localPath"];
-            string localPath = (localPathObj is DBNull) ? remotePath : (string)localPathObj;
-            return SyncItemFactory.CreateFromPaths(localPathPrefix, localPath, remotePathPrefix, remotePath, false);
+            if (result.Count() > 0) {
+                string remotePath = (string)result["path"];
+                object localPathObj = result["localPath"];
+                string localPath = (localPathObj is DBNull) ? remotePath : (string)localPathObj;
+                return SyncItemFactory.CreateFromPaths(localPathPrefix, localPath, remotePathPrefix, remotePath, false);
+            } else {
+                var path = GetFolderPath(id);
+                return path == null ? null : GetFolderSyncItemFromLocalPath(path);
+            }
         }
 
         /// <summary>
