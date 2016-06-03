@@ -5,6 +5,7 @@ using System.Linq;
 using DotCMIS.Client;
 using System.IO;
 using CmisSync.Lib.Database;
+using CmisSync.Lib.Cmis;
 
 namespace CmisSync.Lib.Sync
 {
@@ -337,11 +338,8 @@ namespace CmisSync.Lib.Sync
 
                         // Fill documents list, needed by the crawl method.
                         IList<string> remoteFiles = new List<string>();
-                        ICmisObject cmisObject = session.GetObjectByPath(fileItem.RemotePath);
-                        bool remoteFileExists = cmisObject != null &&
-                            (cmisObject.ObjectType.BaseTypeId.Equals(DotCMIS.Enums.BaseTypeId.CmisDocument)
-                            || cmisObject.ObjectType.GetBaseType().BaseTypeId.Equals(DotCMIS.Enums.BaseTypeId.CmisDocument));
-                        if (remoteFileExists)
+
+                        if (CmisUtils.DocumentExists(session, fileItem.RemotePath))
                         {
                             remoteFiles.Add(fileItem.RemoteLeafname);
                         }
