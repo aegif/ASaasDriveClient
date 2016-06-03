@@ -278,8 +278,16 @@ namespace CmisSync.Lib.Sync
                     {
                         IDocument modifiedDocument = (IDocument)session.GetObjectByPath(modifiedItem.RemotePath);
 
-                        // Needed by the normal crawl, but actually not used in our particular case here.
+                        // Fill documents list, needed by the crawl method.
                         IList<string> remoteFiles = new List<string>();
+                        ICmisObject cmisObject = session.GetObjectByPath(modifiedItem.RemotePath);
+                        bool remoteFileExists = cmisObject.ObjectType.BaseTypeId.Equals(DotCMIS.Enums.BaseTypeId.CmisDocument)
+                            || cmisObject.ObjectType.GetBaseType().BaseTypeId.Equals(DotCMIS.Enums.BaseTypeId.CmisDocument);
+                        if (remoteFileExists)
+                        {
+                            remoteFiles.Add(modifiedItem.RemoteLeafname);
+                        }
+
                         CrawlRemoteDocument(modifiedDocument, modifiedItem.RemotePath, modifiedItem.LocalPath, remoteFiles);
                     }
                     catch (Exception e)
