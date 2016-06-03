@@ -308,8 +308,13 @@ namespace CmisSync.Lib.Sync
                         IFolder destinationFolder = (IFolder)session.GetObjectByPath(destinationFolderItem.RemotePath);
 
                         IList<string> remoteFolders = new List<string>();
+
+                        if (CmisUtils.FolderExists(session, addedFolderItem.RemotePath))
+                        {
+                            remoteFolders.Add(addedFolderItem.RemoteLeafname);
+                        }
+
                         CrawlLocalFolder(addedFolderItem.LocalPath, destinationFolder, remoteFolders);
-                        //UploadFolderRecursively(destinationFolder, addedFolder);
                     }
                     catch (Exception e)
                     {
