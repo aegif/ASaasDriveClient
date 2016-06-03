@@ -511,6 +511,7 @@ namespace CmisSync.Lib.Sync
                             {
                                 if (BIDIRECTIONAL)
                                 {
+                                    // TODO check whether same file has been created on remote at the same time.
                                     // New file, sync up.
                                     Logger.Info("Uploading file absent on repository: " + filePath);
                                     activityListener.ActivityStarted();
