@@ -159,6 +159,7 @@ namespace CmisSync.Lib.Sync
 
                 // Ignore deleted files and folders that are sub-items of a deleted folder.
                 // Folder removal is done recursively so removing sub-items would be redundant.
+
                 foreach (string deletedFolder in new List<string>(deletedFolders)) // Copy the list to avoid modifying it while iterating.
                 {
                     // Ignore deleted files contained in the deleted folder.
@@ -181,28 +182,22 @@ namespace CmisSync.Lib.Sync
                     SyncItem deletedItem = SyncItemFactory.CreateFromLocalPath(deletedFolder, true, repoInfo, database);
                     try
                     {
-                        IFolder deletedIFolder = (IFolder)session.GetObjectByPath(deletedItem.RemotePath);
+                        var deletedIFolder = session.GetObjectByPath(deletedItem.RemotePath) as IFolder;
 
-
-                        //CrawlSync(deletedIFolder, deletedItem.RemotePath, deletedFolder);
-
-                        // Needed by the normal crawl, but actually not used in our particular case here.
-                        IList<string> remoteSubfolders = new List<string>(); 
-                        CrawlRemoteFolder(deletedIFolder, deletedItem.RemotePath, deletedItem.LocalPath, remoteSubfolders);
-
-                        /*
                         // Check whether the remote folder has changes we haven't gotten yet (conflict)
-                        bool changed = HasFolderChanged(deletedFolder, deletedIFolder);
+                        var changed = HasFolderChanged(deletedItem, deletedIFolder);
 
                         // Delete the remote folder if unchanged, otherwise let full sync handle the conflict.
                         if (changed)
                         {
+                            //TODO フォルダのコンフリクト処理
+
                             return false;
                         }
                         else
                         {
                             DeleteRemoteFolder(deletedIFolder, deletedItem, Utils.UpperFolderLocal(deletedItem.LocalPath));
-                        }*/
+                        }
                     }
                     catch (ArgumentNullException e)
                     {
@@ -224,6 +219,23 @@ namespace CmisSync.Lib.Sync
                 }
                 return success;
             }
+
+            private bool HasFolderChanged(SyncItem deletedFolder, IFolder deletedIFolder)
+            {
+                var localModificationDate = database.GetServerSideModificationDate(deletedFolder);
+
+                var children = deletedIFolder.GetChildren();
+                var changed = children.Any(p => p.LastModificationDate > localModificationDate);
+                if (changed) return true;
+                foreach(var leafFolder in children.OfType<IFolder>())
+                {
+                    changed = HasFolderChanged(deletedFolder, leafFolder);
+                    if (changed) return true;
+                }
+                return false;
+            }
+
+
 
 
             /// <summary>

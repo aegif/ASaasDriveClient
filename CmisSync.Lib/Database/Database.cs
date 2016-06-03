@@ -530,16 +530,26 @@ namespace CmisSync.Lib.Database
         {
             Dictionary<string, object> parameters = new Dictionary<string, object>();
             parameters.Add("path", item.RemoteRelativePath);
-            object obj = ExecuteSQLFunction("SELECT serverSideModificationDate FROM files WHERE path=@path", parameters);
-            if (null != obj)
+            object modifyDateObj = null;
+
+            if (item.IsFolder)
             {
-                #if __MonoCS__
-                obj = DateTime.SpecifyKind((DateTime)obj, DateTimeKind.Utc);
-                #else
-                obj = ((DateTime)obj).ToUniversalTime();
-                #endif
+                modifyDateObj = ExecuteSQLFunction("SELECT serverSideModificationDate FROM folders WHERE path=@path", parameters);
             }
-            return (DateTime?)obj;
+            else
+            {
+                modifyDateObj = ExecuteSQLFunction("SELECT serverSideModificationDate FROM files WHERE path=@path", parameters);
+            }
+
+            if (null != modifyDateObj)
+            {
+#if __MonoCS__
+                modifyDateObj = DateTime.SpecifyKind((DateTime)obj, DateTimeKind.Utc);
+#else
+                modifyDateObj = ((DateTime)modifyDateObj).ToUniversalTime();
+#endif
+            }
+            return (DateTime?)modifyDateObj;
         }
             
 
@@ -1156,11 +1166,11 @@ namespace CmisSync.Lib.Database
         public List<ChecksummedFile> GetChecksummedFiles()
         {
             List<ChecksummedFile> result = new List<ChecksummedFile>();
-            SQLiteCommand command = new SQLiteCommand("SELECT path, checksum FROM files;", GetSQLiteConnection());
+            SQLiteCommand command = new SQLiteCommand("SELECT localPath, checksum FROM files;", GetSQLiteConnection());
             SQLiteDataReader reader = command.ExecuteReader();
             while (reader.Read())
             {
-                ChecksummedFile file = new ChecksummedFile((string)reader["path"], (string)reader["checksum"]);
+                ChecksummedFile file = new ChecksummedFile((string)reader["localPath"], (string)reader["checksum"]);
                 result.Add(file);
             }
             return result;

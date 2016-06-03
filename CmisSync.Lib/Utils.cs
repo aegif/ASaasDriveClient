@@ -605,11 +605,12 @@ namespace CmisSync.Lib
 
         /// <summary>
         /// Says whether a folder contains another.
+        /// /a/b /a = ture 
         /// </summary>
         public static bool FirstFolderContainsSecond(string containingFolder, string containedFolder)
         {
-            return containedFolder.StartsWith(containingFolder)
-                && containedFolder.Length > containingFolder.Length; // False if same folder.
+            return containingFolder.StartsWith(containedFolder)
+                && containingFolder.Length > containedFolder.Length; // False if same folder.
         }
     }
 }
