@@ -148,14 +148,14 @@ namespace CmisSync.Lib.Sync
                         {
                             // It is a CMIS folder.
                             IFolder remoteSubFolder = (IFolder)cmisObject;
-                            string remoteSubPath = CmisUtils.PathCombine(remotePath , remoteSubFolder.Name);
+                            string remoteSubPath = CmisUtils.PathCombine(remotePath, remoteSubFolder.Name);
                             CrawlRemoteFolder(remoteSubFolder, remoteSubPath, localFolder, remoteFolders);
                         }
                         else if (cmisObject is DotCMIS.Client.Impl.Document)
                         {
                             // It is a CMIS document.
                             IDocument remoteDocument = (IDocument)cmisObject;
-                            string remoteDocumentPath = CmisUtils.PathCombine(remotePath , remoteDocument.Name);
+                            string remoteDocumentPath = CmisUtils.PathCombine(remotePath, remoteDocument.Name);
                             CrawlRemoteDocument(remoteDocument, remoteDocumentPath, localFolder, remoteFiles);
                         }
                         else if (isLink(cmisObject))
@@ -668,28 +668,32 @@ namespace CmisSync.Lib.Sync
                             var cmisObject = session.GetObject(id);
                             CrawlCmisObject(cmisObject, remoteSubfolders, remoteFiles);
                         }
-                        catch (Exception ex) when (ex.Message == "Not Found")
+                        catch (Exception ex)
                         {
-                            //If not found on server, find local and delete it.
-                            var local = database.GetSyncItem(id);
-                            if (local == null)
+                            if (ex.Message == "Not Found")
                             {
-                                continue;
-                            }
-                            else if (local.IsFolder)
-                            {
-                                Directory.Delete(local.LocalPath, true);
-                                database.RemoveFolder(local);
+                                var local = database.GetSyncItem(id);
+                                if (local == null)
+                                {
+                                    continue;
+                                }
+                                else if (local.IsFolder)
+                                {
+                                    IFolder destinationFolder = (IFolder)session.GetObjectByPath(local.RemotePath);
+                                    CrawlLocalFolder(local.LocalPath, destinationFolder, remoteFiles);
+                                }
+                                else
+                                {
+                                    string destinationFolderPath = Path.GetDirectoryName(local.LocalPath);
+                                    SyncItem folderItem = SyncItemFactory.CreateFromLocalPath(destinationFolderPath, true, repoInfo, database);
+                                    IFolder destinationFolder = (IFolder)session.GetObjectByPath(folderItem.RemotePath);
+                                    CrawlLocalFile(local.LocalPath, destinationFolder, remoteFiles);
+                                }
                             }
                             else
                             {
-                                Utils.DeleteEvenIfReadOnly(local.LocalPath);
-                                database.RemoveFile(local);
+                                Logger.Error(ex);
                             }
-                        }
-                        catch (Exception ex)
-                        {
-                            Logger.Error(ex);
                         }
                     }
 
@@ -702,6 +706,7 @@ namespace CmisSync.Lib.Sync
                     activityListener.ActivityStopped();
                 }
             }
+        
 
             private void CrawlCmisObject(ICmisObject cmisObject, IList<string> remoteFolders, IList<string> remoteFiles)
             {
