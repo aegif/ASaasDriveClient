@@ -97,11 +97,11 @@ namespace CmisSync.Lib.Sync
 
                 // Crawl local files.
                 Logger.InfoFormat("Crawl local files in the local folder {0}", localFolder);
-                CrawlLocalFiles(localFolder, remoteFolder, remoteFiles);
+                CheckLocalFiles(localFolder, remoteFolder, remoteFiles);
 
                 // Crawl local folders.
                 Logger.InfoFormat("Crawl local folder {0}", localFolder);
-                CrawlLocalFolders(localFolder, remoteFolder, remoteSubfolders);
+                CheckLocalFolders(localFolder, remoteFolder, remoteSubfolders);
 
                 return success;
             }
@@ -405,7 +405,7 @@ namespace CmisSync.Lib.Sync
             /// <summary>
             /// Crawl local files in a given directory (not recursive).
             /// </summary>
-            private void CrawlLocalFiles(string localFolder, IFolder remoteFolder, IList<string> remoteFiles)
+            private void CheckLocalFiles(string localFolder, IFolder remoteFolder, IList<string> remoteFiles)
             {
                 SleepWhileSuspended();
 
@@ -422,14 +422,14 @@ namespace CmisSync.Lib.Sync
 
                 foreach (string filePath in files)
                 {
-                    CrawlLocalFile(filePath, remoteFolder, remoteFiles);
+                    CheckLocalFile(filePath, remoteFolder, remoteFiles);
                 }
             }
 
             /// <summary>
             /// Crawl local file in a given directory (not recursive).
             /// </summary>
-            private void CrawlLocalFile(string filePath, IFolder remoteFolder, IList<string> remoteFiles)
+            private void CheckLocalFile(string filePath, IFolder remoteFolder, IList<string> remoteFiles)
             {
                 SleepWhileSuspended();
 
@@ -547,7 +547,7 @@ namespace CmisSync.Lib.Sync
             /// <summary>
             /// Crawl local folders in a given directory (not recursive).
             /// </summary>
-            private void CrawlLocalFolders(string localFolder, IFolder remoteFolder, IList<string> remoteFolders)
+            private void CheckLocalFolders(string localFolder, IFolder remoteFolder, IList<string> remoteFolders)
             {
                 SleepWhileSuspended();
 
@@ -564,14 +564,15 @@ namespace CmisSync.Lib.Sync
 
                 foreach (string localSubFolder in folders)
                 {
-                    CrawlLocalFolder(localSubFolder, remoteFolder, remoteFolders);
+                    CheckLocalFolder(localSubFolder, remoteFolder, remoteFolders);
                 }
             }
 
             /// <summary>
-            /// Crawl local folder in a given directory (not recursive).
+            /// Check a particular local folder (not recursive).
+            /// See whether it has been deleted locally or not.
             /// </summary>
-            private void CrawlLocalFolder(string localSubFolder, IFolder remoteFolder, IList<string> remoteFolders)
+            private void CheckLocalFolder(string localSubFolder, IFolder remoteFolder, IList<string> remoteFolders)
             {
                 SleepWhileSuspended();
                 try
@@ -583,39 +584,30 @@ namespace CmisSync.Lib.Sync
                     }
 
                     string folderName = Path.GetFileName(localSubFolder);
-                    var syncFolderItem = database.GetFolderSyncItemFromLocalPath(localSubFolder);
-                    if (null == syncFolderItem)
-                    {
-                        syncFolderItem = SyncItemFactory.CreateFromLocalPath(localSubFolder, true, repoInfo, database);
-                    }
 
                     if (Utils.WorthSyncing(Path.GetDirectoryName(localSubFolder), folderName, repoInfo))
                     {
+                        var syncFolderItem = database.GetFolderSyncItemFromLocalPath(localSubFolder);
+                        if (null == syncFolderItem)
+                        {
+                            // The local item is not in database. It has not been uploaded yet.
+                            syncFolderItem = SyncItemFactory.CreateFromLocalPath(localSubFolder, true, repoInfo, database);
+                        }
+
                         if (remoteFolders.Contains(syncFolderItem.RemoteLeafname))
                         {
                             // The same folder exists locally and remotely.
                             // Are they synchronized, or were they just created (or moved) at the same time?
-                            /*
-                             * 
-                             * 
-                             * 
-                             * 
-                            */
                             if (database.ContainsFolder(syncFolderItem))
                             {
                                 // Check modification dates of local folder and remote folder.
-
+                                // TODO
                             }
                             else
                             {
                                 // The folder just appeared both on the local and remote sides.
                                 // Rename local folder then download remote folder.
-                                // TODO
-                            }
-
-
-                            /*{
-                                // Rename locally modified file.
+                                
                                 var path = syncFolderItem.LocalPath;
                                 var newPath = Utils.CreateConflictFoldername(path, repoInfo.User);
 
@@ -626,8 +618,9 @@ namespace CmisSync.Lib.Sync
 
                                 repo.OnConflictResolved();
 
-                            }*/
-
+                                // Download folder from server.
+                                DownloadDirectory(remoteFolder, syncFolderItem.RemotePath, path);
+                            }
                         }
                         else
                         {
@@ -641,13 +634,10 @@ namespace CmisSync.Lib.Sync
                             }
                             else
                             {
-                                if (BIDIRECTIONAL)
-                                {
-                                    // New local folder, upload recursively.
-                                    activityListener.ActivityStarted();
-                                    UploadFolderRecursively(remoteFolder, localSubFolder);
-                                    activityListener.ActivityStopped();
-                                }
+                                // New local folder, upload recursively.
+                                activityListener.ActivityStarted();
+                                UploadFolderRecursively(remoteFolder, localSubFolder);
+                                activityListener.ActivityStopped();
                             }
                         }
                     }
@@ -699,14 +689,14 @@ namespace CmisSync.Lib.Sync
                                 else if (local.IsFolder)
                                 {
                                     IFolder destinationFolder = (IFolder)session.GetObjectByPath(local.RemotePath);
-                                    CrawlLocalFolder(local.LocalPath, destinationFolder, remoteFiles);
+                                    CrawlSync(destinationFolder, local.RemotePath, local.LocalPath);
                                 }
                                 else
                                 {
                                     string destinationFolderPath = Path.GetDirectoryName(local.LocalPath);
                                     SyncItem folderItem = SyncItemFactory.CreateFromLocalPath(destinationFolderPath, true, repoInfo, database);
                                     IFolder destinationFolder = (IFolder)session.GetObjectByPath(folderItem.RemotePath);
-                                    CrawlLocalFile(local.LocalPath, destinationFolder, remoteFiles);
+                                    CheckLocalFile(local.LocalPath, destinationFolder, remoteFiles);
                                 }
                             }
                             else
@@ -734,7 +724,7 @@ namespace CmisSync.Lib.Sync
                     var remoteSubFolder = cmisObject as IFolder;
                     var localFolder = database.GetFolderPath(remoteSubFolder.Parents[0].Id);
 
-                    CrawlRemoteFolder(remoteSubFolder, remoteSubFolder.Path, localFolder, remoteFolders);
+                    CrawlSync(remoteSubFolder, remoteSubFolder.Path, localFolder);
                 }
                 else if (cmisObject is DotCMIS.Client.Impl.Document)
                 {
@@ -748,8 +738,6 @@ namespace CmisSync.Lib.Sync
 
                 }
             }
-
-
         }
     }
 }

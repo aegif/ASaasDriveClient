@@ -337,7 +337,8 @@ namespace CmisSync.Lib.Sync
                             remoteFolders.Add(addedFolderItem.RemoteLeafname);
                         }
 
-                        CrawlLocalFolder(addedFolderItem.LocalPath, destinationFolder, remoteFolders);
+                        // TODO more efficient: first create said folder, then call CrawlSync in it.
+                        CrawlSync(destinationFolder, destinationFolderItem.RemotePath, destinationFolderItem.LocalPath);
                     }
                     catch (Exception e)
                     {
@@ -373,7 +374,7 @@ namespace CmisSync.Lib.Sync
                         }
 
                         // Crawl this particular file.
-                        CrawlLocalFile(fileItem.LocalPath, destinationFolder, remoteFiles);
+                        CheckLocalFile(fileItem.LocalPath, destinationFolder, remoteFiles);
                     }
                     catch (Exception e)
                     {
