@@ -166,7 +166,7 @@ namespace CmisSync.Lib.Sync
                     deletedFiles.RemoveAll(deletedFile => deletedFile.StartsWith(deletedFolder));
 
                     // Ignore deleted folders contained in the deleted folder.
-                    deletedFolders.RemoveAll(otherDeletedFolder => Utils.FirstFolderContainsSecond(otherDeletedFolder, deletedFolder));
+                    deletedFolders.RemoveAll(otherDeletedFolder => Utils.FirstFolderContainsSecond(deletedFolder, otherDeletedFolder));
                 }
             }
 
