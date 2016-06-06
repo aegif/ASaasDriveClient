@@ -632,7 +632,7 @@ namespace CmisSync.Lib.Sync
                 try
                 {
                     sw.Start();
-                    Logger.InfoFormat("Change log sync start : {0} los", changeLogs.Count());
+                    Logger.InfoFormat("Change log sync start : {0} logs", changeLogs.Count());
 
                     var token = CmisUtils.GetChangeLogToken(session);
 
@@ -640,11 +640,10 @@ namespace CmisSync.Lib.Sync
                     var remoteFiles = new List<string>();
                     var remoteSubfolders = new List<string>();
 
-                    // Compaction for changelog : Type=Update & Same VersionSeriesId object needs only latest one
-                    var targetChanges = changeLogs
-                        .Where(p1 => p1 == changeLogs.Last(p2 => p2.ChangeType == ChangeType.Updated && p2.Properties["cmis:versionSeriesId"][0] == p2.Properties["cmis:versionSeriesId"][0]));
+                    // //TODO: チェンジログ同士で不要な操作を圧縮する(以下では上手く行かない）
+                    //var targetChanges = changeLogs.Where(p1 => p1 == changeLogs.LastOrDefault(p2 => p2.Properties["cmis:versionSeriesId"][0] == p1.Properties["cmis:versionSeriesId"][0]));
 
-                    foreach (var change in targetChanges)
+                    foreach (var change in changeLogs)
                     {
                         var id = change.ObjectId;
                         try
