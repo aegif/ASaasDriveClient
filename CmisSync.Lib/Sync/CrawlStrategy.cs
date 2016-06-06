@@ -682,21 +682,28 @@ namespace CmisSync.Lib.Sync
                             if (ex.Message == "Not Found")
                             {
                                 var local = database.GetSyncItem(id);
-                                if (local == null)
+                                if (local != null)
                                 {
-                                    continue;
-                                }
-                                else if (local.IsFolder)
-                                {
-                                    IFolder destinationFolder = (IFolder)session.GetObjectByPath(local.RemotePath);
-                                    CrawlSync(destinationFolder, local.RemotePath, local.LocalPath);
-                                }
-                                else
-                                {
-                                    string destinationFolderPath = Path.GetDirectoryName(local.LocalPath);
-                                    SyncItem folderItem = SyncItemFactory.CreateFromLocalPath(destinationFolderPath, true, repoInfo, database);
-                                    IFolder destinationFolder = (IFolder)session.GetObjectByPath(folderItem.RemotePath);
-                                    CheckLocalFile(local.LocalPath, destinationFolder, remoteFiles);
+                                    var destFolderPath = Path.GetDirectoryName(local.LocalPath);
+                                    var destFolderItem = SyncItemFactory.CreateFromLocalPath(destFolderPath, true, repoInfo, database);
+                                    
+                                    try
+                                    {
+                                        var destCmisFolder = session.GetObjectByPath(destFolderItem.RemotePath) as IFolder;
+
+                                        if (local.IsFolder)
+                                        {
+                                            CrawlSync(destCmisFolder, destFolderItem.RemotePath, destFolderItem.LocalPath);
+                                        }
+                                        else
+                                        {
+                                            CheckLocalFile(local.LocalPath, destCmisFolder, remoteFiles);
+                                        }
+                                    }catch(ArgumentNullException)
+                                    {
+                                        // GetObjectByPath failure
+                                        Logger.Info("Remote parent object not found, continue process change log.");
+                                    }
                                 }
                             }
                             else
@@ -722,15 +729,16 @@ namespace CmisSync.Lib.Sync
                 if (cmisObject is DotCMIS.Client.Impl.Folder)
                 {
                     var remoteSubFolder = cmisObject as IFolder;
-                    var localFolder = database.GetFolderPath(remoteSubFolder.Parents[0].Id);
-
-                    CrawlSync(remoteSubFolder, remoteSubFolder.Path, localFolder);
+                    var localFolderItem = database.GetFolderSyncItemFromRemotePath(remoteSubFolder.Path);
+                    
+                    CrawlSync(remoteSubFolder, remoteSubFolder.Path, localFolderItem.LocalPath);
                 }
                 else if (cmisObject is DotCMIS.Client.Impl.Document)
                 {
                     var remoteDocument = cmisObject as IDocument;
-
-                    var localFolder = database.GetFolderPath(remoteDocument.Parents[0].Id);
+                    
+                    var localFolderItem = database.GetFolderSyncItemFromRemotePath(remoteDocument.Parents[0].Path);
+                    var localFolder = localFolderItem.LocalPath;
                     CrawlRemoteDocument(remoteDocument, remoteDocument.Paths[0], localFolder, remoteFiles);
                 }
                 else
