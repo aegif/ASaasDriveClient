@@ -1,13 +1,14 @@
 using DotCMIS.Client;
 using DotCMIS.Exceptions;
 using System;
+using System.Linq;
 using System.Collections;
 using System.IO;
 using System.Collections.Generic;
 using System.Globalization;
 using DotCMIS.Client.Impl;
 using CmisSync.Lib.Cmis;
-
+using DotCMIS.Enums;
 
 namespace CmisSync.Lib.Sync
 {
@@ -182,8 +183,9 @@ namespace CmisSync.Lib.Sync
                 IObjectType parent = cmisObject.ObjectType.GetParentType();
                 while (parent != null)
                 {
-                    if(parent.Id.Equals("I:cm:link")){
-                    return true;
+                    if (parent.Id.Equals("I:cm:link"))
+                    {
+                        return true;
                     }
                     parent = parent.GetParentType();
                 }
@@ -373,7 +375,7 @@ namespace CmisSync.Lib.Sync
                         // Maybe the whole synchronized folder has disappeared?
                         // While rare for normal filesystems, that happens rather often with mounted folders (for instance encrypted folders)
                         // In such a case, we should abort this synchronization rather than delete the remote file.
-                        if ( ! Directory.Exists(repoInfo.TargetDirectory))
+                        if (!Directory.Exists(repoInfo.TargetDirectory))
                         {
                             throw new Exception("Local target directory has disappeared: " + repoInfo.TargetDirectory + " , aborting synchronization");
                         }
@@ -438,7 +440,7 @@ namespace CmisSync.Lib.Sync
                         Logger.Info("Skipping symbolic linked file: " + filePath);
                         return;
                     }
-                    
+
                     var item = database.GetSyncItemFromLocalPath(filePath);
                     if (null == item)
                     {
@@ -637,6 +639,93 @@ namespace CmisSync.Lib.Sync
                     ProcessRecoverableException("Could not crawl sync local folder: " + localSubFolder, e);
                 }
             }
+
+
+            private void CrawlChangeLogSyncAndUpdateChangeLogToken(IList<IChangeEvent> changeLogs, IFolder remoteFolder, string remotePath, string localFolder)
+            {
+                var sw = new System.Diagnostics.Stopwatch();
+
+                activityListener.ActivityStarted();
+                try
+                {
+                    sw.Start();
+                    Logger.InfoFormat("Change log sync start : {0} logs", changeLogs.Count());
+
+                    var token = CmisUtils.GetChangeLogToken(session);
+
+                    // Lists of files/folders, to delete those that have been removed on the server.
+                    var remoteFiles = new List<string>();
+                    var remoteSubfolders = new List<string>();
+
+                    // //TODO: チェンジログ同士で不要な操作を圧縮する(以下では上手く行かない）
+                    //var targetChanges = changeLogs.Where(p1 => p1 == changeLogs.LastOrDefault(p2 => p2.Properties["cmis:versionSeriesId"][0] == p1.Properties["cmis:versionSeriesId"][0]));
+
+                    foreach (var change in changeLogs)
+                    {
+                        var id = change.ObjectId;
+                        try
+                        {
+                            var cmisObject = session.GetObject(id);
+                            CrawlCmisObject(cmisObject, remoteSubfolders, remoteFiles);
+                        }
+                        catch (Exception ex) when (ex.Message == "Not Found")
+                        {
+                            //If not found on server, find local and delete it.
+                            var local = database.GetSyncItem(id);
+                            if (local == null)
+                            {
+                                continue;
+                            }
+                            else if (local.IsFolder)
+                            {
+                                Directory.Delete(local.LocalPath, true);
+                                database.RemoveFolder(local);
+                            }
+                            else
+                            {
+                                Utils.DeleteEvenIfReadOnly(local.LocalPath);
+                                database.RemoveFile(local);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.Error(ex);
+                        }
+                    }
+
+                    sw.Stop();
+                    Logger.InfoFormat("Change log sync end : {1} min / {0} logs", changeLogs.Count(), sw.Elapsed);
+                    database.SetChangeLogToken(token);
+                }
+                finally
+                {
+                    activityListener.ActivityStopped();
+                }
+            }
+
+            private void CrawlCmisObject(ICmisObject cmisObject, IList<string> remoteFolders, IList<string> remoteFiles)
+            {
+                if (cmisObject is DotCMIS.Client.Impl.Folder)
+                {
+                    var remoteSubFolder = cmisObject as IFolder;
+                    var localFolder = database.GetFolderPath(remoteSubFolder.Parents[0].Id);
+
+                    CrawlRemoteFolder(remoteSubFolder, remoteSubFolder.Path, localFolder, remoteFolders);
+                }
+                else if (cmisObject is DotCMIS.Client.Impl.Document)
+                {
+                    var remoteDocument = cmisObject as IDocument;
+
+                    var localFolder = database.GetFolderPath(remoteDocument.Parents[0].Id);
+                    CrawlRemoteDocument(remoteDocument, remoteDocument.Paths[0], localFolder, remoteFiles);
+                }
+                else
+                {
+
+                }
+            }
+
+
         }
     }
 }

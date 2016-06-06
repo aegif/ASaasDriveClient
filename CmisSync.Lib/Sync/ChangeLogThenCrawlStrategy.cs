@@ -96,7 +96,9 @@ namespace CmisSync.Lib.Sync
                         if (ChangeIsApplicable(change))
                         {
                             // Launch a CrawlSync (which means syncing everything indistinctively).
-                            CrawlSyncAndUpdateChangeLogToken(remoteFolder, remotePath, localFolder);
+                            //CrawlSyncAndUpdateChangeLogToken(remoteFolder, remotePath, localFolder);
+
+                            CrawlChangeLogSyncAndUpdateChangeLogToken(changes.ChangeEventList, remoteFolder, remotePath, localFolder);
 
                             // A single CrawlSync takes care of all pending changes, so no need to analyze the rest of the changes.
                             // It will also update the last client-side ChangeLog token, more accurately than we can do here.
