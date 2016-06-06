@@ -446,7 +446,6 @@ namespace CmisSync.Lib.Sync
                         item = SyncItemFactory.CreateFromLocalPath(filePath, false, repoInfo, database);
                     }
 
-                    // string fileName = Path.GetFileName(filePath);
                     string fileName = item.RemoteLeafname;
 
                     if (Utils.WorthSyncing(Path.GetDirectoryName(filePath), fileName, repoInfo))
@@ -511,7 +510,6 @@ namespace CmisSync.Lib.Sync
                             {
                                 if (BIDIRECTIONAL)
                                 {
-                                    // TODO check whether same file has been created on remote at the same time.
                                     // New file, sync up.
                                     Logger.Info("Uploading file absent on repository: " + filePath);
                                     activityListener.ActivityStarted();
@@ -593,7 +591,28 @@ namespace CmisSync.Lib.Sync
                     {
                         if (remoteFolders.Contains(syncFolderItem.RemoteLeafname))
                         {
+                            // The same folder exists locally and remotely.
+                            // Are they synchronized, or were they just created (or moved) at the same time?
+                            /*
+                             * 
+                             * 
+                             * 
+                             * 
+                            */
+                            if (database.ContainsFolder(syncFolderItem))
                             {
+                                // Check modification dates of local folder and remote folder.
+
+                            }
+                            else
+                            {
+                                // The folder just appeared both on the local and remote sides.
+                                // Rename local folder then download remote folder.
+                                // TODO
+                            }
+
+
+                            /*{
                                 // Rename locally modified file.
                                 var path = syncFolderItem.LocalPath;
                                 var newPath = Utils.CreateConflictFoldername(path, repoInfo.User);
@@ -605,7 +624,7 @@ namespace CmisSync.Lib.Sync
 
                                 repo.OnConflictResolved();
 
-                            }
+                            }*/
 
                         }
                         else
