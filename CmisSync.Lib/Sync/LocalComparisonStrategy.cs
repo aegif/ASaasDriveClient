@@ -190,7 +190,18 @@ namespace CmisSync.Lib.Sync
                         // Delete the remote folder if unchanged, otherwise let full sync handle the conflict.
                         if (changed)
                         {
+                            var remotePath = deletedItem.RemotePath;
+                            var localPath = deletedItem.LocalPath;
+                            var remoteFolders = new List<string>();
+
+                            string message = String.Format("ローカルで削除されたディレクトリ {0} の子要素がサーバ側で更新されていたため、ディレクトリ全体を復帰します。必要であれば再度削除を試みてください。", localPath);
+                            Utils.NotifyUser(message);
+
                             //TODO フォルダのコンフリクト処理
+                            // Delete local database entry.
+                            database.RemoveFolder(SyncItemFactory.CreateFromLocalPath(deletedFolder, true, repoInfo, database));
+
+                            CrawlRemoteFolder(deletedIFolder, remotePath, localPath, remoteFolders);
 
                             return false;
                         }
