@@ -591,7 +591,24 @@ namespace CmisSync.Lib.Sync
 
                     if (Utils.WorthSyncing(Path.GetDirectoryName(localSubFolder), folderName, repoInfo))
                     {
-                        if (!remoteFolders.Contains(syncFolderItem.RemoteLeafname))
+                        if (remoteFolders.Contains(syncFolderItem.RemoteLeafname))
+                        {
+                            {
+                                // Rename locally modified file.
+                                var path = syncFolderItem.LocalPath;
+                                var newPath = Utils.CreateConflictFoldername(path, repoInfo.User);
+
+                                Directory.Move(path, newPath);
+
+                                // Delete file from database.
+                                database.RemoveFile(syncFolderItem);
+
+                                repo.OnConflictResolved();
+
+                            }
+
+                        }
+                        else
                         {
                             // This local folder is not on the CMIS server now, so
                             // check whether it used to exist on server or not.
