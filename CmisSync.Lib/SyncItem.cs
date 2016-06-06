@@ -54,14 +54,14 @@ namespace CmisSync.Lib
         /// Whether the item is a folder or a file.
         /// </summary>
         protected bool isFolder;
-
-        /// <summary>
-        /// Whether the item is a folder or a file.
-        /// </summary>
         public bool IsFolder
         {
-            get { return isFolder; }
+            get
+            {
+                return isFolder;
+            }
         }
+
         /// <summary>
         /// Reference to the CmisSync database.
         /// It is useful to get the remote path that matches a local path, or vice versa
