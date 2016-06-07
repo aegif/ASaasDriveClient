@@ -719,6 +719,9 @@ namespace CmisSync.Lib.Sync
                                 Logger.InfoFormat("Remote object not found but delete event, ignore. {0}", id);
                             }
 
+                        } catch(Exception ex)
+                        {
+                            Logger.Debug(ex);
                         }
                     }
 

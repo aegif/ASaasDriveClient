@@ -40,7 +40,7 @@ namespace CmisSync.Lib.Sync
                 // Interval=1 hours -> every 3 days -> about every 72 iterations
                 // Thus a good formula is: nb of iterations = 1 + 263907 / (pollInterval + 117)
                 double pollInterval = ConfigManager.CurrentConfig.GetFolder(repoInfo.Name).PollInterval;
-                if (changeLogIterationCounter > 263907 / (pollInterval/1000 + 117))
+                if (changeLogIterationCounter > 263907 / (pollInterval / 1000 + 117))
                 {
                     Logger.Debug("It has been a while since the last crawl sync, so launching a crawl sync now.");
                     CrawlSyncAndUpdateChangeLogToken(remoteFolder, remotePath, localFolder);
@@ -77,7 +77,7 @@ namespace CmisSync.Lib.Sync
                 {
                     // Token is null, which means no sync has ever happened yet, so just sync everything from remote.
                     CrawlRemote(remoteFolder, remotePath, repoInfo.TargetDirectory, new List<string>(), new List<string>());
-                    
+
                     Logger.Info("Synced from remote, updating ChangeLog token: " + lastTokenOnServer);
                     database.SetChangeLogToken(lastTokenOnServer);
                 }
@@ -156,6 +156,12 @@ namespace CmisSync.Lib.Sync
                         Logger.Info("A CMIS exception occured when querying the change. Syncing just in case: " + changeIdForDebug + " :", e);
                         return true;
                     }
+                
+                }
+                catch (CmisPermissionDeniedException e)
+                {
+                    Logger.Info("Permission denied object  : " + changeIdForDebug + " :", e);
+                    return false;
                 }
                 catch (Exception e)
                 {
