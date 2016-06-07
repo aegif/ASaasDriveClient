@@ -671,7 +671,7 @@ namespace CmisSync.Lib.Sync
 
                     
 
-                    foreach (var change in changeLogs.Where( change => ChangeIsApplicable(change)))
+                    foreach (var change in changeLogs)
                     {
 
                         var id = change.ObjectId;
@@ -755,6 +755,7 @@ namespace CmisSync.Lib.Sync
 
                         if (localFolderItem != null || remoteSubFolder.IsRootFolder) break;
 
+                        //TODO: Parents[0]
                         remoteSubFolder = remoteSubFolder.Parents[0];
                         localFolderItem = database.GetFolderSyncItemFromRemotePath(remoteSubFolder.Path);
                     };
@@ -774,8 +775,9 @@ namespace CmisSync.Lib.Sync
 
                             var localFolderItem = database.GetFolderSyncItemFromRemotePath(remoteIFolder.Path);
                             var localFolder = localFolderItem.LocalPath;
-
-                            CrawlRemoteDocument(remoteDocument, remoteIFolder.Path, localFolder, null);
+                            
+                            var remotePath = CmisUtils.PathCombine(remoteIFolder.Path, remoteDocument.Name);
+                            CrawlRemoteDocument(remoteDocument, remotePath,  localFolder, null);
                         }
                     }
                 }

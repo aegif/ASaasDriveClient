@@ -284,7 +284,7 @@ namespace CmisSync.Lib.Sync
                 bool success = true;
                 foreach (string deletedFile in deletedFiles)
                 {
-                    SyncItem deletedItem = SyncItemFactory.CreateFromLocalPath(deletedFile, true, repoInfo, database);
+                    SyncItem deletedItem = SyncItemFactory.CreateFromLocalPath(deletedFile, false, repoInfo, database);
                     try
                     {
                         IDocument deletedDocument = (IDocument)session.GetObjectByPath(deletedItem.RemotePath);
@@ -297,11 +297,10 @@ namespace CmisSync.Lib.Sync
                     {
                         // Typical error when the document does not exist anymore on the server
                         // TODO Make DotCMIS generate a more precise exception.
-
-                        Logger.Error("The document has probably been deleted on the server already: " + deletedFile, e);
+                        Logger.Info("The document has probably been deleted on the server already: " + deletedFile, e);
 
                         // Delete local database entry.
-                        database.RemoveFile(SyncItemFactory.CreateFromLocalPath(deletedFile, false, repoInfo, database));
+                        database.RemoveFile(deletedItem);
 
                         // Note: This is not a failure per-se, so we don't need to modify the "success" variable.
                     }
