@@ -275,7 +275,7 @@ namespace CmisSync.Lib.Sync
             }
 
             /// <summary>
-            /// Crawl remote document, syncing down if needed.
+            /// Check remote document, syncing down if needed.
             /// Meanwhile, cache remoteFiles, they are output parameters that are used in CrawlLocalFiles/CrawlLocalFolders
             /// </summary>
             private void CrawlRemoteDocument(IDocument remoteDocument, string remotePath, string localFolder, IList<string> remoteFiles)
@@ -299,7 +299,10 @@ namespace CmisSync.Lib.Sync
                         return;
                     }
 
-                    remoteFiles.Add(remoteDocumentFileName);
+                    if (remoteFiles != null)
+                    {
+                        remoteFiles.Add(remoteDocumentFileName);
+                    }
 
                     var paths = remoteDocument.Paths;
                     var pathsCount = paths.Count;
@@ -427,8 +430,9 @@ namespace CmisSync.Lib.Sync
             }
 
             /// <summary>
-            /// Crawl local file in a given directory (not recursive).
+            /// Check a local file in a given directory (not recursive).
             /// </summary>
+            /// <param name="remoteFiles">Remove the file if it is not in this list of remote files. Ignored if null</param>
             private void CheckLocalFile(string filePath, IFolder remoteFolder, IList<string> remoteFiles)
             {
                 SleepWhileSuspended();
@@ -452,9 +456,10 @@ namespace CmisSync.Lib.Sync
 
                     if (Utils.WorthSyncing(Path.GetDirectoryName(filePath), fileName, repoInfo))
                     {
-                        if (!(remoteFiles.Contains(fileName) ||
-                            // Workaround for Documentum which sometimes put a ".zip" extension to document names.
-                            (CmisUtils.IsDocumentum(session) && remoteFiles.Contains(fileName + ".zip"))))
+                        if (remoteFiles != null &&
+                                ! ( remoteFiles.Contains(fileName) ||
+                                // Workaround for Documentum which sometimes put a ".zip" extension to document names.
+                                (CmisUtils.IsDocumentum(session) && remoteFiles.Contains(fileName + ".zip"))))
                         {
                             // This local file is not on the CMIS server now, so
                             // check whether it used to exist on server or not.
@@ -662,12 +667,6 @@ namespace CmisSync.Lib.Sync
                     sw.Start();
                     Logger.InfoFormat("Change log sync start : {0} logs", changeLogs.Count());
 
-                    var token = CmisUtils.GetChangeLogToken(session);
-
-                    // Lists of files/folders, to delete those that have been removed on the server.
-                    var remoteFiles = new List<string>();
-                    var remoteSubfolders = new List<string>();
-
                     // //TODO: チェンジログ同士で不要な操作を圧縮する(以下では上手く行かない）
                     //var targetChanges = changeLogs.Where(p1 => p1 == changeLogs.LastOrDefault(p2 => p2.Properties["cmis:versionSeriesId"][0] == p1.Properties["cmis:versionSeriesId"][0]));
 
@@ -677,7 +676,7 @@ namespace CmisSync.Lib.Sync
                         try
                         {
                             var cmisObject = session.GetObject(id);
-                            CrawlCmisObject(cmisObject, remoteSubfolders, remoteFiles);
+                            CrawlCmisObject(cmisObject);
                         }
                         catch (Exception ex)
                         {
@@ -702,7 +701,7 @@ namespace CmisSync.Lib.Sync
                                             }
                                             else
                                             {
-                                                CheckLocalFile(local.LocalPath, destCmisFolder, remoteFiles);
+                                                CheckLocalFile(local.LocalPath, destCmisFolder, null);
                                             }
                                         }
                                         catch (ArgumentNullException)
@@ -728,7 +727,6 @@ namespace CmisSync.Lib.Sync
 
                     sw.Stop();
                     Logger.InfoFormat("Change log sync end : {1} min / {0} logs", changeLogs.Count(), sw.Elapsed);
-                    database.SetChangeLogToken(token);
                 }
                 finally
                 {
@@ -737,7 +735,7 @@ namespace CmisSync.Lib.Sync
             }
         
 
-            private void CrawlCmisObject(ICmisObject cmisObject, IList<string> remoteFolders, IList<string> remoteFiles)
+            private void CrawlCmisObject(ICmisObject cmisObject)
             {
                 if (cmisObject is DotCMIS.Client.Impl.Folder)
                 {
@@ -769,7 +767,8 @@ namespace CmisSync.Lib.Sync
 
                     var localFolderItem = database.GetFolderSyncItemFromRemotePath(remoteDocument.Parents[0].Path);
                     var localFolder = localFolderItem.LocalPath;
-                    CrawlRemoteDocument(remoteDocument, remoteDocument.Paths[0], localFolder, remoteFiles);
+
+                    CrawlRemoteDocument(remoteDocument, remoteDocument.Paths[0], localFolder, null);
                 }
                 else
                 {
