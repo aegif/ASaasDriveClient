@@ -67,6 +67,12 @@ namespace CmisSync
 
             Controller = new Controller();
 
+            // Custom configuration file specified from command line.
+            if (args.Length > 0)
+            {
+                ConfigManager.CurrentConfigFile = args[0];
+            }
+
             bool firstRun = ! File.Exists(ConfigManager.CurrentConfigFile);
 
             ServicePointManager.CertificatePolicy = new CertPolicyHandler();
