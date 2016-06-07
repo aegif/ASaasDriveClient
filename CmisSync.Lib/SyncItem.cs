@@ -376,7 +376,7 @@ namespace CmisSync.Lib
         {
             get
             {
-                return Utils.PathCombine(remoteRoot , RemoteRelativePath);
+                return CmisUtils.PathCombine(remoteRoot , RemoteRelativePath);
             }
         }
 
