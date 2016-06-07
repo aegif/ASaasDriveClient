@@ -775,7 +775,10 @@ namespace CmisSync.Lib.Sync
                             var localFolderItem = database.GetFolderSyncItemFromRemotePath(remoteIFolder.Path);
                             var localFolder = localFolderItem.LocalPath;
 
-                            CrawlRemoteDocument(remoteDocument, remoteIFolder.Path, localFolder, null);
+                            var remoteDocumentPath = CmisUtils.PathCombine(remoteIFolder.Path, repoInfo.CmisProfile.localFilename(remoteDocument));
+                            var documentItem = SyncItemFactory.CreateFromRemoteDocument(remoteDocumentPath, remoteDocument, repoInfo, database);
+
+                            CrawlRemoteDocument(remoteDocument, documentItem.RemotePath, localFolder, null);
                         }
                     }
                 }

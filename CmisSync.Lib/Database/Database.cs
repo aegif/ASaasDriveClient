@@ -910,6 +910,11 @@ namespace CmisSync.Lib.Database
         /// <param name="remotePath">Remote path.</param>
         public SyncItem GetSyncItemFromRemotePath(string remotePath)
         {
+            if (remotePath.Equals(remotePathPrefix))
+            {
+                return SyncItemFactory.CreateFromPaths(localPathPrefix, localPathPrefix, remotePathPrefix, remotePathPrefix, false);
+            }
+
             string normalizedRemotePath = RemoveRemotePrefix(remotePath);
             Dictionary<string, object> parameters = new Dictionary<string, object>();
             parameters.Add("path", normalizedRemotePath);
@@ -948,6 +953,11 @@ namespace CmisSync.Lib.Database
         /// <param name="remotePath">Remote path.</param>
         public SyncItem GetFolderSyncItemFromRemotePath(string remotePath)
         {
+            if (remotePath.Equals(remotePathPrefix))
+            {
+                return SyncItemFactory.CreateFromPaths(localPathPrefix, localPathPrefix, remotePathPrefix, remotePathPrefix, true);
+            }
+
             string normalizedRemotePath = RemoveRemotePrefix(remotePath);
             Dictionary<string, object> parameters = new Dictionary<string, object>();
             parameters.Add("path", normalizedRemotePath);
