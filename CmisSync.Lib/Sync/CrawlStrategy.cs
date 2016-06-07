@@ -547,7 +547,7 @@ namespace CmisSync.Lib.Sync
             /// <summary>
             /// Crawl local folders in a given directory (not recursive).
             /// </summary>
-            private void CheckLocalFolders(string localFolder, IFolder remoteFolder, IList<string> remoteFolders)
+            private void CheckLocalFolders(string localFolder, IFolder remoteRoot, IList<string> remoteFolders)
             {
                 SleepWhileSuspended();
 
@@ -564,7 +564,7 @@ namespace CmisSync.Lib.Sync
 
                 foreach (string localSubFolder in folders)
                 {
-                    CheckLocalFolder(localSubFolder, remoteFolder, remoteFolders);
+                    CheckLocalFolder(localSubFolder, remoteRoot, remoteFolders);
                 }
             }
 
@@ -572,7 +572,7 @@ namespace CmisSync.Lib.Sync
             /// Check a particular local folder (not recursive).
             /// See whether it has been deleted locally or not.
             /// </summary>
-            private void CheckLocalFolder(string localSubFolder, IFolder remoteFolder, IList<string> remoteFolders)
+            private void CheckLocalFolder(string localSubFolder, IFolder remoteRoot, IList<string> remoteFolders)
             {
                 SleepWhileSuspended();
                 try
@@ -607,7 +607,9 @@ namespace CmisSync.Lib.Sync
                             {
                                 // The folder just appeared both on the local and remote sides.
                                 // Rename local folder then download remote folder.
-                                
+
+                                IFolder remoteFolder = (IFolder)session.GetObjectByPath(syncFolderItem.RemotePath);
+
                                 var path = syncFolderItem.LocalPath;
                                 var newPath = Utils.CreateConflictFoldername(path, repoInfo.User);
 
@@ -636,7 +638,7 @@ namespace CmisSync.Lib.Sync
                             {
                                 // New local folder, upload recursively.
                                 activityListener.ActivityStarted();
-                                UploadFolderRecursively(remoteFolder, localSubFolder);
+                                UploadFolderRecursively(remoteRoot, localSubFolder);
                                 activityListener.ActivityStopped();
                             }
                         }
