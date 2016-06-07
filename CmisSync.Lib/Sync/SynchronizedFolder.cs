@@ -1552,13 +1552,6 @@ namespace CmisSync.Lib.Sync
 
                     Logger.InfoFormat("Moving: {0} -> {1}", oldPathname, newPathname);
 
-                    //TODO : Workaround MOVE event not detect by change log
-                    foreach(var parent in remoteFile.Parents){
-                        if (parent.IsRootFolder) continue;
-                        var properties = new Dictionary<string, object>();
-                        properties[PropertyIds.Name] = parent.Name;
-                        parent.UpdateProperties(properties);
-                    }
                     IDocument updatedDocument = (IDocument)remoteFile.Move(oldRemoteFolder, newRemoteFolder);
 
                     // Update the path in the database...
@@ -1593,15 +1586,6 @@ namespace CmisSync.Lib.Sync
                 {
 
                     Logger.InfoFormat("Moving: {0} -> {1}", oldPathname, newPathname);
-
-                    //TODO : Workaround MOVE event not detect by change log
-                    var parent = remoteFolder.FolderParent;
-                    if (!parent.IsRootFolder)
-                    {
-                        var properties = new Dictionary<string, object>();
-                        properties[PropertyIds.Name] = parent.Name;
-                        parent.UpdateProperties(properties);
-                    }
 
                     IFolder updatedFolder = (IFolder)remoteFolder.Move(oldRemoteFolder, newRemoteFolder);
 
