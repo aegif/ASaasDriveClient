@@ -681,29 +681,40 @@ namespace CmisSync.Lib.Sync
                         {
                             if (ex.Message == "Not Found")
                             {
-                                var local = database.GetSyncItem(id);
-                                if (local != null)
+                                if (change.ChangeType == ChangeType.Deleted)
                                 {
-                                    var destFolderPath = Path.GetDirectoryName(local.LocalPath);
-                                    var destFolderItem = SyncItemFactory.CreateFromLocalPath(destFolderPath, true, repoInfo, database);
-                                    
-                                    try
-                                    {
-                                        var destCmisFolder = session.GetObjectByPath(destFolderItem.RemotePath) as IFolder;
 
-                                        if (local.IsFolder)
-                                        {
-                                            CrawlSync(destCmisFolder, destFolderItem.RemotePath, destFolderItem.LocalPath);
-                                        }
-                                        else
-                                        {
-                                            CheckLocalFile(local.LocalPath, destCmisFolder, remoteFiles);
-                                        }
-                                    }catch(ArgumentNullException)
+                                    var local = database.GetSyncItem(id);
+                                    if (local != null)
                                     {
-                                        // GetObjectByPath failure
-                                        Logger.Info("Remote parent object not found, continue process change log.");
+                                        var destFolderPath = Path.GetDirectoryName(local.LocalPath);
+                                        var destFolderItem = SyncItemFactory.CreateFromLocalPath(destFolderPath, true, repoInfo, database);
+
+                                        try
+                                        {
+                                            var destCmisFolder = session.GetObjectByPath(destFolderItem.RemotePath) as IFolder;
+
+                                            if (local.IsFolder)
+                                            {
+                                                CrawlSync(destCmisFolder, destFolderItem.RemotePath, destFolderItem.LocalPath);
+                                            }
+                                            else
+                                            {
+                                                CheckLocalFile(local.LocalPath, destCmisFolder, remoteFiles);
+                                            }
+                                        }
+                                        catch (ArgumentNullException)
+                                        {
+                                            // GetObjectByPath failure
+                                            Logger.InfoFormat("Remote parent object not found, continue process change log. {0}", destFolderItem.RemotePath);
+                                        }
                                     }
+
+                                }
+                                else
+                                {
+                                    // すでにサーバで削除されているオブジェクトに関するイベントについてはDeleteが発行されるので処理しない
+                                    Logger.InfoFormat("Remote object not found but delete event, ignore. {0}", id);
                                 }
                             }
                             else
