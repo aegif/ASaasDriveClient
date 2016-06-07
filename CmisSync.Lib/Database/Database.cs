@@ -870,8 +870,10 @@ namespace CmisSync.Lib.Database
                 string localPath = (localPathObj is DBNull) ? remotePath : (string)localPathObj;
                 return SyncItemFactory.CreateFromPaths(localPathPrefix, localPath, remotePathPrefix, remotePath, false);
             } else {
-                var path = this.GetFolderRemotePath(id);
-                return path == null ? null : GetFolderSyncItemFromLocalPath(path);
+                var items = GetAllFolderSyncItem(id);
+
+                var item = items.FirstOrDefault();
+                return item == null ? null : item;
             }
         }
 
@@ -1003,9 +1005,10 @@ namespace CmisSync.Lib.Database
         /// </summary>
         public string GetFolderRemotePath(string id)
         {
-            Dictionary<string, object> parameters = new Dictionary<string, object>();
-            parameters.Add("id", id);
-            return Denormalize((string)ExecuteSQLFunction("SELECT path FROM folders WHERE id=@id ORDER BY serverSideModificationDate", parameters));
+            var items = GetAllFolderSyncItem(id);
+
+            var item = items.FirstOrDefault();
+            return item == null ? null : Denormalize(item.RemotePath);
         }
 
         public List<SyncItem> GetAllFolderSyncItem(string id)
@@ -1013,7 +1016,7 @@ namespace CmisSync.Lib.Database
             Dictionary<string, object> parameters = new Dictionary<string, object>();
             parameters.Add("id", id);
 
-            var results = ExecuteMultiRecordSQL("SELECT path , localPath FROM folders WHERE id=@id ORDER BY serverSideModificationDate", parameters);
+            var results = ExecuteMultiRecordSQL("SELECT path , localPath FROM folders WHERE id=@id ORDER BY serverSideModificationDate DESC", parameters);
 
             return results.Select(p =>
             {

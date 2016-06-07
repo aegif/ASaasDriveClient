@@ -57,7 +57,7 @@ namespace CmisSync.Lib.Sync
                 if (ConfigManager.CurrentConfig.GetFolder(repoInfo.Name) != null)
                     features = ConfigManager.CurrentConfig.GetFolder(repoInfo.Name).SupportedFeatures;
                 int maxNumItems = (features != null && features.MaxNumberOfContentChanges != null) ?  // TODO if there are more items, either loop or force CrawlSync
-                    (int)features.MaxNumberOfContentChanges : 100;
+                    (int)features.MaxNumberOfContentChanges : 500;
 
                 IChangeEvents changes;
 
@@ -88,7 +88,10 @@ namespace CmisSync.Lib.Sync
                     // Check which documents/folders have changed.
                     changes = session.GetContentChanges(lastTokenOnClient, IsPropertyChangesSupported, maxNumItems);
 
+                    CrawlChangeLogSyncAndUpdateChangeLogToken(changes.ChangeEventList, remoteFolder, remotePath, localFolder);
+
                     // Apply changes.
+                    /*
                     foreach (IChangeEvent change in changes.ChangeEventList)
                     {
                         // Check whether change is applicable.
@@ -98,13 +101,14 @@ namespace CmisSync.Lib.Sync
                             // Launch a CrawlSync (which means syncing everything indistinctively).
                             //CrawlSyncAndUpdateChangeLogToken(remoteFolder, remotePath, localFolder);
 
-                            CrawlChangeLogSyncAndUpdateChangeLogToken(changes.ChangeEventList, remoteFolder, remotePath, localFolder);
+                            
 
                             // A single CrawlSync takes care of all pending changes, so no need to analyze the rest of the changes.
                             // It will also update the last client-side ChangeLog token, more accurately than we can do here.
                             return;
                         }
                     }
+                    */
 
                     // No applicable changes, update ChangeLog token.
                     lastTokenOnClient = changes.LatestChangeLogToken; // But dont save to database as latest server token is actually a later token.

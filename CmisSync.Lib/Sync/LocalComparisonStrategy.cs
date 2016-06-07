@@ -185,7 +185,7 @@ namespace CmisSync.Lib.Sync
                         var deletedIFolder = session.GetObjectByPath(deletedItem.RemotePath) as IFolder;
 
                         // Check whether the remote folder has changes we haven't gotten yet (conflict)
-                        var changed = HasFolderChanged(deletedItem, deletedIFolder);
+                        var changed = HasFolderChanged(deletedIFolder);
 
                         // Delete the remote folder if unchanged, otherwise let full sync handle the conflict.
                         if (changed)
@@ -231,16 +231,43 @@ namespace CmisSync.Lib.Sync
                 return success;
             }
 
-            private bool HasFolderChanged(SyncItem deletedFolder, IFolder deletedIFolder)
+            private bool HasFolderChanged(IFolder deletedIFolder)
             {
-                var localModificationDate = database.GetServerSideModificationDate(deletedFolder);
+                // TODO 新規作成に対応できてない
 
-                var children = deletedIFolder.GetChildren();
-                var changed = children.Any(p => p.LastModificationDate > localModificationDate);
+                // ChangeLog 
+                string lastTokenOnClient = database.GetChangeLogToken();
+                string lastTokenOnServer = CmisUtils.GetChangeLogToken(session);
+
+                if (lastTokenOnClient == lastTokenOnServer || lastTokenOnClient == null) return false;
+
+                // TODO: Extract static code, because same code was writtern in SynchronizedFolder
+                Config.Feature features = null;
+                if (ConfigManager.CurrentConfig.GetFolder(repoInfo.Name) != null)
+                    features = ConfigManager.CurrentConfig.GetFolder(repoInfo.Name).SupportedFeatures;
+                int maxNumItems = (features != null && features.MaxNumberOfContentChanges != null) ?  // TODO if there are more items, either loop or force CrawlSync
+                    (int)features.MaxNumberOfContentChanges : 500;
+
+                var changes = session.GetContentChanges(lastTokenOnClient, IsPropertyChangesSupported, maxNumItems);
+
+                return CheckInsideChange(deletedIFolder, changes);
+            }
+
+            private bool CheckInsideChange(IFolder targetIFolder, IChangeEvents changeTokens)
+            {
+                var children = targetIFolder.GetChildren();
+                var leafFolders = children.OfType<IFolder>();
+                var leafFiles = children.OfType<IDocument>();
+
+                var changed =
+                    leafFolders.Any(childFolder => changeTokens.ChangeEventList.Any(change => childFolder.Id == change.ObjectId))
+                    || leafFiles.Any(childFile => changeTokens.ChangeEventList.Any(change => childFile.VersionSeriesId == change.Properties["versionSeriesId"][0] as string))
+                    ;
                 if (changed) return true;
-                foreach(var leafFolder in children.OfType<IFolder>())
+
+                foreach (var leafFolder in leafFolders)
                 {
-                    changed = HasFolderChanged(deletedFolder, leafFolder);
+                    changed = CheckInsideChange(leafFolder, changeTokens);
                     if (changed) return true;
                 }
                 return false;
