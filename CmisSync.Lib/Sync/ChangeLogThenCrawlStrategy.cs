@@ -57,7 +57,7 @@ namespace CmisSync.Lib.Sync
                 if (ConfigManager.CurrentConfig.GetFolder(repoInfo.Name) != null)
                     features = ConfigManager.CurrentConfig.GetFolder(repoInfo.Name).SupportedFeatures;
                 int maxNumItems = (features != null && features.MaxNumberOfContentChanges != null) ?  // TODO if there are more items, either loop or force CrawlSync
-                    (int)features.MaxNumberOfContentChanges : 500;
+                    (int)features.MaxNumberOfContentChanges : 50;
 
                 IChangeEvents changes;
 
@@ -73,6 +73,7 @@ namespace CmisSync.Lib.Sync
                     return;
                 }
 
+
                 if (lastTokenOnClient == null)
                 {
                     // Token is null, which means no sync has ever happened yet, so just sync everything from remote.
@@ -85,6 +86,7 @@ namespace CmisSync.Lib.Sync
                 // ChangeLog tokens are different, so checking changes is needed.
                 do
                 {
+
                     // Check which documents/folders have changed.
                     changes = session.GetContentChanges(lastTokenOnClient, IsPropertyChangesSupported, maxNumItems);
 
@@ -97,6 +99,7 @@ namespace CmisSync.Lib.Sync
                 // Only reached if none of the changes in this iteration were non-applicable.
                 while (changes.HasMoreItems ?? false);
 
+                
                 database.SetChangeLogToken(lastTokenOnServer);
             }
 

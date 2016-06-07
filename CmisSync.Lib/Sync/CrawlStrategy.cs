@@ -215,8 +215,16 @@ namespace CmisSync.Lib.Sync
                         // Check whether local folder exists.
                         if (Directory.Exists(subFolderItem.LocalPath))
                         {
-                            // Recurse into folder.
-                            CrawlSync(remoteSubFolder, remotePath, subFolderItem.LocalPath);
+                            try
+                            {
+                                activityListener.ActivityStarted();
+                                // Recurse into folder.
+                                CrawlSync(remoteSubFolder, remotePath, subFolderItem.LocalPath);
+                            }
+                            finally
+                            {
+                                activityListener.ActivityStopped();
+                            }
                         }
                         else
                         {
@@ -232,37 +240,55 @@ namespace CmisSync.Lib.Sync
                             // TODO warn if local changes in the file.
                             if (File.Exists(subFolderItem.LocalPath))
                             {
-                                activityListener.ActivityStarted();
-                                Utils.DeleteEvenIfReadOnly(subFolderItem.LocalPath);
-                                activityListener.ActivityStopped();
+                                try
+                                {
+                                    activityListener.ActivityStarted();
+                                    Utils.DeleteEvenIfReadOnly(subFolderItem.LocalPath);
+                                }
+                                finally
+                                {
+                                    activityListener.ActivityStopped();
+                                }
                             }
 
                             if (database.ContainsFolder(subFolderItem))
                             {
+
+                                try
+                                {
+                                    activityListener.ActivityStarted();
+
                                 // If there was previously a folder with this name, it means that
                                 // the user has deleted it voluntarily, so delete it from server too.
 
-                                activityListener.ActivityStarted();
-
-                                DeleteRemoteFolder(remoteSubFolder, subFolderItem, remotePath);
-
-                                activityListener.ActivityStopped();
+                                    DeleteRemoteFolder(remoteSubFolder, subFolderItem, remotePath);
+                                }
+                                finally
+                                {
+                                    activityListener.ActivityStopped();
+                                }
                             }
                             else
                             {
-                                // The folder has been recently created on server, so download it.
-                                activityListener.ActivityStarted();
-                                Directory.CreateDirectory(subFolderItem.LocalPath);
+                                try
+                                {
+                                    // The folder has been recently created on server, so download it.
+                                    activityListener.ActivityStarted();
+                                    Directory.CreateDirectory(subFolderItem.LocalPath);
 
-                                // Create database entry for this folder.
-                                // TODO - Yannick - Add metadata
-                                database.AddFolder(subFolderItem, remoteSubFolder.Id, remoteSubFolder.LastModificationDate);
-                                Logger.Info("Added folder to database: " + subFolderItem.LocalPath);
+                                    // Create database entry for this folder.
+                                    // TODO - Yannick - Add metadata
+                                    database.AddFolder(subFolderItem, remoteSubFolder.Id, remoteSubFolder.LastModificationDate);
+                                    Logger.Info("Added folder to database: " + subFolderItem.LocalPath);
 
-                                // Recursive copy of the whole folder.
-                                RecursiveFolderCopy(remoteSubFolder, remotePath, subFolderItem.LocalPath);
+                                    // Recursive copy of the whole folder.
+                                    RecursiveFolderCopy(remoteSubFolder, remotePath, subFolderItem.LocalPath);
 
-                                activityListener.ActivityStopped();
+                                }
+                                finally
+                                {
+                                    activityListener.ActivityStopped();
+                                }
                             }
                         }
                     }
@@ -673,6 +699,7 @@ namespace CmisSync.Lib.Sync
 
                     foreach (var change in changeLogs)
                     {
+                        Logger.InfoFormat("Change log : Type={0},Name={1}", change.ChangeType, change.Properties["cmis:name"].First());
 
                         var id = change.ObjectId;
                         try
