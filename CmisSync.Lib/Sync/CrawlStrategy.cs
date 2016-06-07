@@ -740,14 +740,31 @@ namespace CmisSync.Lib.Sync
                 if (cmisObject is DotCMIS.Client.Impl.Folder)
                 {
                     var remoteSubFolder = cmisObject as IFolder;
+
+
+                    // ローカルにある場所を探す
                     var localFolderItem = database.GetFolderSyncItemFromRemotePath(remoteSubFolder.Path);
-                    
+                    while (true)
+                    {
+                        //サーバのパスと異なるが同じIDがローカルで重なっていた場合は古いので削除する
+                        var deleteFolderList = database.GetAllFolderSyncItem(cmisObject.Id).Where(p => p.RemotePath != remoteSubFolder.Path);
+                        foreach (var deleteFolder in deleteFolderList)
+                        {
+                            RemoveFolderLocally(deleteFolder.LocalPath);
+                        };
+
+                        if (localFolderItem != null || remoteSubFolder.IsRootFolder) break;
+
+                        remoteSubFolder = remoteSubFolder.Parents[0];
+                        localFolderItem = database.GetFolderSyncItemFromRemotePath(remoteSubFolder.Path);
+                    };
+
                     CrawlSync(remoteSubFolder, remoteSubFolder.Path, localFolderItem.LocalPath);
                 }
                 else if (cmisObject is DotCMIS.Client.Impl.Document)
                 {
                     var remoteDocument = cmisObject as IDocument;
-                    
+
                     var localFolderItem = database.GetFolderSyncItemFromRemotePath(remoteDocument.Parents[0].Path);
                     var localFolder = localFolderItem.LocalPath;
                     CrawlRemoteDocument(remoteDocument, remoteDocument.Paths[0], localFolder, remoteFiles);

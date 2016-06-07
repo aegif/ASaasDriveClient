@@ -863,14 +863,14 @@ namespace CmisSync.Lib.Database
         {
             Dictionary<string, object> parameters = new Dictionary<string, object>();
             parameters.Add("id", id);
-            var result = ExecuteSQL("SELECT path, localPath FROM files WHERE id=@id", parameters);
+            var result = ExecuteOneRecordSQL("SELECT path, localPath FROM files WHERE id=@id", parameters);
             if (result.Count() > 0) {
                 string remotePath = (string)result["path"];
                 object localPathObj = result["localPath"];
                 string localPath = (localPathObj is DBNull) ? remotePath : (string)localPathObj;
                 return SyncItemFactory.CreateFromPaths(localPathPrefix, localPath, remotePathPrefix, remotePath, false);
             } else {
-                var path = GetFolderPath(id);
+                var path = this.GetFolderRemotePath(id);
                 return path == null ? null : GetFolderSyncItemFromLocalPath(path);
             }
         }
@@ -1001,12 +1001,30 @@ namespace CmisSync.Lib.Database
         /// <summary>
         /// <returns>path field in folders table for <paramref name="id"/></returns>
         /// </summary>
-        public string GetFolderPath(string id)
+        public string GetFolderRemotePath(string id)
         {
             Dictionary<string, object> parameters = new Dictionary<string, object>();
             parameters.Add("id", id);
-            return Denormalize((string)ExecuteSQLFunction("SELECT path FROM folders WHERE id=@id", parameters));
+            return Denormalize((string)ExecuteSQLFunction("SELECT path FROM folders WHERE id=@id ORDER BY serverSideModificationDate", parameters));
         }
+
+        public List<SyncItem> GetAllFolderSyncItem(string id)
+        {
+            Dictionary<string, object> parameters = new Dictionary<string, object>();
+            parameters.Add("id", id);
+
+            var results = ExecuteMultiRecordSQL("SELECT path , localPath FROM folders WHERE id=@id ORDER BY serverSideModificationDate", parameters);
+
+            return results.Select(p =>
+            {
+                var localPath = p["localPath"] as string;
+                var remotePath = p["path"] as string;
+                return SyncItemFactory.CreateFromPaths(localPathPrefix, localPath, remotePathPrefix, remotePath, true);
+
+            }).ToList();
+        }
+
+        
 
         /// <summary>
         /// Check whether a file's content has changed locally since it was last synchronized.
@@ -1230,12 +1248,12 @@ namespace CmisSync.Lib.Database
         }
 
         /// <summary>
-        /// Executes the SQL and Return multiple results.
+        /// Executes the SQL and Return one record results.
         /// </summary>
         /// <returns>results</returns>
         /// <param name="text">SQL</param>
         /// <param name="parameters">Parameters.</param>
-        private Dictionary<string, object> ExecuteSQL(string text, Dictionary<string, object> parameters)
+        private Dictionary<string, object> ExecuteOneRecordSQL(string text, Dictionary<string, object> parameters)
         {
             using (var command = new SQLiteCommand(GetSQLiteConnection()))
             {
@@ -1256,6 +1274,43 @@ namespace CmisSync.Lib.Database
                     }
                 }
                 catch(SQLiteException e)
+                {
+                    Logger.Error(String.Format("Could not execute SQL: {0};", sqliteConnection), e);
+                    throw;
+                }
+            }
+        }
+
+
+        /// <summary>
+        /// Executes the SQL and Return multiple results.
+        /// </summary>
+        /// <returns>results</returns>
+        /// <param name="text">SQL</param>
+        /// <param name="parameters">Parameters.</param>
+        private List<Dictionary<string, object>> ExecuteMultiRecordSQL(string text, Dictionary<string, object> parameters)
+        {
+            using (var command = new SQLiteCommand(GetSQLiteConnection()))
+            {
+                try
+                {
+                    ComposeSQLCommand(command, text, parameters);
+                    using (var dataReader = command.ExecuteReader())
+                    {
+                        var results = new List<Dictionary<string, object>>();
+                        while (dataReader.Read())
+                        {
+                            var record = new Dictionary<string, object>();
+                            for (int i = 0; i < dataReader.FieldCount; i++)
+                            {
+                                record.Add(dataReader.GetName(i), dataReader[i]);
+                            }
+                            results.Add(record);
+                        }
+                        return results;
+                    }
+                }
+                catch (SQLiteException e)
                 {
                     Logger.Error(String.Format("Could not execute SQL: {0};", sqliteConnection), e);
                     throw;
