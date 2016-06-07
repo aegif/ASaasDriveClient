@@ -107,7 +107,8 @@ namespace CmisSync
             }
 
             // Only allow one instance of CmisSync (on Windows)
-            if (!program_mutex.WaitOne(0, false))
+            if (args.Length == 0 &&     // Allow more than one instance if using a custom config file.
+                !program_mutex.WaitOne(0, false))
             {
                 Logger.Error("CmisSync is already running.");
                 Environment.Exit(-1);
