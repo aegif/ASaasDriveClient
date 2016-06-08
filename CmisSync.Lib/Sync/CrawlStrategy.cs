@@ -109,20 +109,30 @@ namespace CmisSync.Lib.Sync
 
             private void CrawlSyncAndUpdateChangeLogToken(IFolder remoteFolder, string remotePath, string localFolder)
             {
-                // Get ChangeLog token.
-                string token = CmisUtils.GetChangeLogToken(session);
-
-                // Sync.
-                bool success = CrawlSync(remoteFolder, remotePath, localFolder);
-
-                // Update ChangeLog token if sync has been successful.
-                if (success)
+                var sw = new System.Diagnostics.Stopwatch();
+                Logger.Info("Remote Full Crawl Started");
+                try
                 {
-                    database.SetChangeLogToken(token);
+
+                    // Get ChangeLog token.
+                    string token = CmisUtils.GetChangeLogToken(session);
+
+                    // Sync.
+                    bool success = CrawlSync(remoteFolder, remotePath, localFolder);
+
+                    // Update ChangeLog token if sync has been successful.
+                    if (success)
+                    {
+                        database.SetChangeLogToken(token);
+                    }
+                    else
+                    {
+                        Logger.Info("ChangeLog token not updated as an error occurred during sync.");
+                    }
                 }
-                else
+                finally
                 {
-                    Logger.Info("ChangeLog token not updated as an error occurred during sync.");
+                    Logger.InfoFormat("Remote Full Crawl Finished : {0} min", sw.Elapsed);
                 }
             }
 
