@@ -749,7 +749,7 @@ namespace CmisSync.Lib.Sync
                                         }
                                         else
                                         {
-                                            CheckLocalFile(local.LocalPath, destCmisFolder, null);
+                                            CheckLocalFile(local.LocalPath, destCmisFolder, new List<string>());
                                         }
                                     }
                                     catch (ArgumentNullException)
