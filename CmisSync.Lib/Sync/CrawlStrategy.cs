@@ -699,11 +699,21 @@ namespace CmisSync.Lib.Sync
 
                     foreach (var change in changeLogs)
                     {
-                        Logger.InfoFormat("Change log : Type={0},Name={1}", change.ChangeType, change.Properties["cmis:name"].First());
 
                         var id = change.ObjectId;
                         try
                         {
+                            Logger.InfoFormat("Change log : Type={0}, Name={1}", change.ChangeType, change.Properties["cmis:name"].First());
+                        }
+                        catch
+                        {
+                            Logger.InfoFormat("Change log : Type={0}, Id={1} ", change.ChangeType, id);
+                        }
+
+
+                        try
+                        {
+                            
                             var cmisObject = session.GetObject(id);
                             CrawlCmisObject(cmisObject);
                         }

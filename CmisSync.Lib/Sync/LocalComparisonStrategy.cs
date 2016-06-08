@@ -6,6 +6,7 @@ using DotCMIS.Client;
 using System.IO;
 using CmisSync.Lib.Database;
 using CmisSync.Lib.Cmis;
+using DotCMIS.Exceptions;
 
 namespace CmisSync.Lib.Sync
 {
@@ -188,11 +189,12 @@ namespace CmisSync.Lib.Sync
                         var changed = HasFolderChanged(deletedIFolder);
 
                         // Delete the remote folder if unchanged, otherwise let full sync handle the conflict.
+                        var remotePath = deletedItem.RemotePath;
+                        var localPath = deletedItem.LocalPath;
+                        var remoteFolders = new List<string>();
+
                         if (changed)
                         {
-                            var remotePath = deletedItem.RemotePath;
-                            var localPath = deletedItem.LocalPath;
-                            var remoteFolders = new List<string>();
 
                             string message = String.Format("ローカルで削除されたディレクトリ {0} の子要素がサーバ側で更新されていたため、ディレクトリ全体を復帰します。必要であれば再度削除を試みてください。", localPath);
                             Utils.NotifyUser(message);
@@ -201,7 +203,7 @@ namespace CmisSync.Lib.Sync
                             // Delete local database entry.
                             database.RemoveFolder(SyncItemFactory.CreateFromLocalPath(deletedFolder, true, repoInfo, database));
 
-                            CrawlRemoteFolder(deletedIFolder, remotePath, localPath, remoteFolders);
+                            RecursiveFolderCopy(deletedIFolder, remotePath, localPath);
 
                             return false;
                         }
@@ -291,7 +293,15 @@ namespace CmisSync.Lib.Sync
 
                         // Needed by the normal crawl, but actually not used in our particular case here.
                         IList<string> remoteFiles = new List<string>();
-                        CrawlRemoteDocument(deletedDocument, deletedItem.RemotePath, deletedItem.LocalPath, remoteFiles);
+                        try
+                        {
+                            CrawlRemoteDocument(deletedDocument, deletedItem.RemotePath, deletedItem.LocalPath, remoteFiles);
+                        }
+                        catch (CmisPermissionDeniedException e)
+                        {
+                            Logger.Info("This user cannot delete file : " + deletedFile, e);
+                            DownloadFile(deletedDocument, deletedItem.RemotePath, deletedItem.LocalPath);
+                        }
                     }
                     catch (ArgumentNullException e)
                     {
@@ -304,6 +314,7 @@ namespace CmisSync.Lib.Sync
 
                         // Note: This is not a failure per-se, so we don't need to modify the "success" variable.
                     }
+                    
                     catch (Exception e)
                     {
                         // Could be a network error.
