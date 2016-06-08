@@ -438,15 +438,7 @@ namespace CmisSync.Lib.Sync
                     else
                     {
                         // Apply local changes noticed by the filesystem watcher.
-                        bool locallyModified = WatcherSync(remoteFolderPath, localFolder);
-                        if (locallyModified)
-                        {
-                            // First compare local files with local database and apply changes to the server.
-                            // The goal of doing this before CrawlSync is that changes get uploaded earlier.
-                            ApplyLocalChanges(localFolder);
-
-                            CrawlSyncAndUpdateChangeLogToken(remoteFolder, remoteFolderPath, localFolder);
-                        }
+                        WatcherSync(remoteFolderPath, localFolder);
 
                         // Compare locally, in case the watcher did not do its job correctly (that happens, Windows bug).
                         ApplyLocalChanges(localFolder);
