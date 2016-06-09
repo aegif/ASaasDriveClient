@@ -84,23 +84,28 @@ namespace CmisSync.Lib.Sync
                 }
 
                 // ChangeLog tokens are different, so checking changes is needed.
-                do
+                try
                 {
+                    do
+                    {
 
-                    // Check which documents/folders have changed.
-                    changes = session.GetContentChanges(lastTokenOnClient, IsPropertyChangesSupported, maxNumItems);
+                        // Check which documents/folders have changed.
+                        changes = session.GetContentChanges(lastTokenOnClient, IsPropertyChangesSupported, maxNumItems);
 
-                    CrawlChangeLogSyncAndUpdateChangeLogToken(changes.ChangeEventList, remoteFolder, remotePath, localFolder);
+                        CrawlChangeLogSyncAndUpdateChangeLogToken(changes.ChangeEventList, remoteFolder, remotePath, localFolder);
 
-                    // No applicable changes, update ChangeLog token.
-                    lastTokenOnClient = changes.LatestChangeLogToken; // But dont save to database as latest server token is actually a later token.
+                        // No applicable changes, update ChangeLog token.
+                        lastTokenOnClient = changes.LatestChangeLogToken; // But dont save to database as latest server token is actually a later token.
+                    }
+                    // Repeat if there were two many changes to fit in a single response.
+                    // Only reached if none of the changes in this iteration were non-applicable.
+                    while (changes.HasMoreItems ?? false);
+
                 }
-                // Repeat if there were two many changes to fit in a single response.
-                // Only reached if none of the changes in this iteration were non-applicable.
-                while (changes.HasMoreItems ?? false);
-
-                
-                database.SetChangeLogToken(lastTokenOnServer);
+                finally
+                {
+                    database.SetChangeLogToken(lastTokenOnServer);
+                }
             }
 
 

@@ -695,8 +695,10 @@ namespace CmisSync.Lib.Sync
 
             private void CrawlChangeLogSyncAndUpdateChangeLogToken(IList<IChangeEvent> changeLogs, IFolder remoteFolder, string remotePath, string localFolder)
             {
-                var sw = new System.Diagnostics.Stopwatch();
 
+                SleepWhileSuspended();
+
+                var sw = new System.Diagnostics.Stopwatch();
                 activityListener.ActivityStarted();
                 try
                 {
