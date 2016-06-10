@@ -648,6 +648,9 @@ namespace CmisSync.Lib.Sync
             /// <summary>
             /// Download all content from a CMIS folder.
             /// </summary>
+            /// <param name="remoteFolder">The new folder to download. Example: /sites/project/newfolder</param>
+            /// <param name="remotePath">The new folder to download. Example: /sites/project/newfolder</param>
+            /// <param name="localFolder">The new folder that will be filled by this operation. Warning: It must exist already! Example: C:\CmisSync\project\newfolder</param> TODO: Create the local folder in this method.
             private void RecursiveFolderCopy(IFolder remoteFolder, string remotePath, string localFolder)
             {
                 SleepWhileSuspended();
@@ -1380,7 +1383,7 @@ namespace CmisSync.Lib.Sync
                     // We don't have the permission to delete this folder. Warn and recreate it.
                     Utils.NotifyUser("You don't have the necessary permissions to delete folder " + folder.Path
                         + "\nIf you feel you should be able to delete it, please contact your server administrator");
-                    RecursiveFolderCopy(folder, upperFolderPath, syncItem.LocalPath);
+                    RecursiveFolderCopy(folder, syncItem.RemotePath, syncItem.LocalPath);
                 }
 
                 // Delete the folder from database.
