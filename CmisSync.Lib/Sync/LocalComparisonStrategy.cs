@@ -203,7 +203,7 @@ namespace CmisSync.Lib.Sync
                             // Delete local database entry.
                             database.RemoveFolder(SyncItemFactory.CreateFromLocalPath(deletedFolder, true, repoInfo, database));
 
-                            RecursiveFolderCopy(deletedIFolder, remotePath, localPath);
+                            DownloadDirectory(deletedIFolder, remotePath, localPath);
 
                             return false;
                         }
