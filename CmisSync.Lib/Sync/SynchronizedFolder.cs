@@ -648,6 +648,9 @@ namespace CmisSync.Lib.Sync
             /// <summary>
             /// Download all content from a CMIS folder.
             /// </summary>
+            /// <param name="remoteFolder">The new folder to download. Example: /sites/project/newfolder</param>
+            /// <param name="remotePath">The new folder to download. Example: /sites/project/newfolder</param>
+            /// <param name="localFolder">The new folder that will be filled by this operation. Warning: It must exist already! Example: C:\CmisSync\project\newfolder</param> TODO: Create the local folder in this method.
             private void RecursiveFolderCopy(IFolder remoteFolder, string remotePath, string localFolder)
             {
                 SleepWhileSuspended();
