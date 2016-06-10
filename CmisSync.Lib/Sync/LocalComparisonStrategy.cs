@@ -196,10 +196,11 @@ namespace CmisSync.Lib.Sync
                         if (changed)
                         {
 
-                            string message = String.Format("ローカルで削除されたディレクトリ {0} の子要素がサーバ側で更新されていたため、ディレクトリ全体を復帰します。必要であれば再度削除を試みてください。", localPath);
+                            // TODO: リソース化
+                            string message = String.Format("ローカルで削除されたフォルダ {0} の子要素がサーバ側で更新されていたため、フォルダ全体を復帰します。必要であれば再度削除を試みてください。", localPath);
                             Utils.NotifyUser(message);
 
-                            //TODO フォルダのコンフリクト処理
+                            // TODO: フォルダのコンフリクト処理
                             // Delete local database entry.
                             database.RemoveFolder(SyncItemFactory.CreateFromLocalPath(deletedFolder, true, repoInfo, database));
 

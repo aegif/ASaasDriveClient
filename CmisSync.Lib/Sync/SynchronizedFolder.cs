@@ -1377,17 +1377,26 @@ namespace CmisSync.Lib.Sync
                         Logger.Error("Failed to completely delete remote folder " + folder.Path);
                         // TODO Should we retry? Maybe at least once, as a manual recursion instead of a DeleteTree.
                     }
+
+                    // Delete the folder from database.
+                    database.RemoveFolder(syncItem);
                 }
                 catch (CmisPermissionDeniedException e)
                 {
+
+                    // TODO: リソース化
+                    string message = String.Format("フォルダ {0} に対して削除やリネームする権限がないため、サーバからこのフォルダを復元します（フォルダに含まれるファイル数が多い場合、復元に時間がかかります）。", syncItem.LocalPath);
+                    Utils.NotifyUser(message);
+
+
                     // We don't have the permission to delete this folder. Warn and recreate it.
+                    /*
                     Utils.NotifyUser("You don't have the necessary permissions to delete folder " + folder.Path
                         + "\nIf you feel you should be able to delete it, please contact your server administrator");
-                    RecursiveFolderCopy(folder, syncItem.RemotePath, syncItem.LocalPath);
+                    */
+                    database.RemoveFolder(syncItem);
+                    DownloadDirectory(folder, syncItem.RemotePath, syncItem.LocalPath);
                 }
-
-                // Delete the folder from database.
-                database.RemoveFolder(syncItem);
             }
 
 
