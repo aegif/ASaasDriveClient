@@ -1380,7 +1380,7 @@ namespace CmisSync.Lib.Sync
                     // We don't have the permission to delete this folder. Warn and recreate it.
                     Utils.NotifyUser("You don't have the necessary permissions to delete folder " + folder.Path
                         + "\nIf you feel you should be able to delete it, please contact your server administrator");
-                    RecursiveFolderCopy(folder, upperFolderPath, syncItem.LocalPath);
+                    RecursiveFolderCopy(folder, syncItem.RemotePath, syncItem.LocalPath);
                 }
 
                 // Delete the folder from database.
