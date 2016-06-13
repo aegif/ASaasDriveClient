@@ -430,10 +430,22 @@ namespace CmisSync.Lib.Sync
                         // Compare local files with local database and apply changes to the server.
                         ApplyLocalChanges(localFolder);
 
-                        // Full sync.
-                        CrawlSync(remoteFolder, remoteFolderPath, localFolder);
+                        var success = false;
+                        if (ChangeLogCapability)
+                        {
+                            //Before full sync, get latest changelog
+                            var lastTokenOnServer = CmisUtils.GetChangeLogToken(session);
+                            success = CrawlSync(remoteFolder, remoteFolderPath, localFolder);
+                            if(success) database.SetChangeLogToken(lastTokenOnServer);
+                        }else
+                        {
+                            // Full sync.
+                            success = CrawlSync(remoteFolder, remoteFolderPath, localFolder);
 
-                        firstSync = false;
+                        }
+
+                        //If crawl sync failed, retry.
+                        firstSync = success;
                     }
                     else
                     {
