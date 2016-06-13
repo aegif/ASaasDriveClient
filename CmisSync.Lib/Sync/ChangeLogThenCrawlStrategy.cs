@@ -228,6 +228,153 @@ namespace CmisSync.Lib.Sync
                 // In other case, the change is probably applicable.
                 return true;
             }
+
+
+            private void CrawlChangeLogSyncAndUpdateChangeLogToken(IList<IChangeEvent> changeLogs, IFolder remoteFolder, string remotePath, string localFolder)
+            {
+
+                SleepWhileSuspended();
+
+                var sw = new System.Diagnostics.Stopwatch();
+                activityListener.ActivityStarted();
+                try
+                {
+                    sw.Start();
+                    Logger.InfoFormat("Change log sync start : {0} logs", changeLogs.Count());
+
+                    // //TODO: ƒ`ƒFƒ“ƒWƒƒO“¯Žm‚Å•s—v‚È‘€ì‚ðˆ³k‚·‚é(ˆÈ‰º‚Å‚ÍãŽè‚­s‚©‚È‚¢j
+
+
+
+                    foreach (var change in changeLogs)
+                    {
+
+                        var id = change.ObjectId;
+                        try
+                        {
+                            Logger.InfoFormat("Change log : Type={0}, Name={1}", change.ChangeType, change.Properties["cmis:name"].First());
+                        }
+                        catch
+                        {
+                            Logger.InfoFormat("Change log : Type={0}, Id={1} ", change.ChangeType, id);
+                        }
+
+
+                        try
+                        {
+
+                            var cmisObject = session.GetObject(id);
+                            CrawlCmisObject(cmisObject);
+                        }
+                        catch (CmisObjectNotFoundException ex)
+                        {
+
+                            if (change.ChangeType == ChangeType.Deleted)
+                            {
+
+                                var local = database.GetSyncItem(id);
+                                if (local != null)
+                                {
+                                    var destFolderPath = Path.GetDirectoryName(local.LocalPath);
+                                    var destFolderItem = SyncItemFactory.CreateFromLocalPath(destFolderPath, true, repoInfo, database);
+
+                                    try
+                                    {
+                                        var destCmisFolder = session.GetObjectByPath(destFolderItem.RemotePath) as IFolder;
+
+                                        if (local.IsFolder)
+                                        {
+                                            CrawlSync(destCmisFolder, destFolderItem.RemotePath, destFolderItem.LocalPath);
+                                        }
+                                        else
+                                        {
+                                            CheckLocalFile(local.LocalPath, destCmisFolder, new List<string>());
+                                        }
+                                    }
+                                    catch (ArgumentNullException)
+                                    {
+                                        // GetObjectByPath failure
+                                        Logger.InfoFormat("Remote parent object not found, continue process change log. {0}", destFolderItem.RemotePath);
+                                    }
+                                }
+
+                            }
+                            else
+                            {
+                                // ‚·‚Å‚ÉƒT[ƒo‚Åíœ‚³‚ê‚Ä‚¢‚éƒIƒuƒWƒFƒNƒg‚ÉŠÖ‚·‚éƒCƒxƒ“ƒg‚É‚Â‚¢‚Ä‚ÍDelete‚ª”­s‚³‚ê‚é‚Ì‚Åˆ—‚µ‚È‚¢
+                                Logger.InfoFormat("Remote object not found but delete event, ignore. {0}", id);
+                            }
+
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.Debug(ex);
+                        }
+                    }
+
+                    sw.Stop();
+                    Logger.InfoFormat("Change log sync end : {1} min / {0} logs", changeLogs.Count(), sw.Elapsed);
+                }
+                finally
+                {
+                    activityListener.ActivityStopped();
+                }
+            }
+
+
+            private void CrawlCmisObject(ICmisObject cmisObject)
+            {
+                if (cmisObject is DotCMIS.Client.Impl.Folder)
+                {
+                    var remoteSubFolder = cmisObject as IFolder;
+
+
+                    // ƒ[ƒJƒ‹‚É‚ ‚éêŠ‚ð’T‚·
+                    var localFolderItem = database.GetFolderSyncItemFromRemotePath(remoteSubFolder.Path);
+                    while (true)
+                    {
+                        //ƒT[ƒo‚ÌƒpƒX‚ÆˆÙ‚È‚é‚ª“¯‚¶ID‚ªƒ[ƒJƒ‹‚Åd‚È‚Á‚Ä‚¢‚½ê‡‚ÍŒÃ‚¢‚Ì‚Åíœ‚·‚é
+                        var deleteFolderList = database.GetAllFolderSyncItem(cmisObject.Id).Where(p => p.RemotePath != remoteSubFolder.Path);
+                        foreach (var deleteFolder in deleteFolderList)
+                        {
+                            RemoveFolderLocally(deleteFolder.LocalPath);
+                        };
+
+                        if (localFolderItem != null || remoteSubFolder.IsRootFolder) break;
+
+                        //TODO: Parents[0]
+                        remoteSubFolder = remoteSubFolder.Parents[0];
+                        localFolderItem = database.GetFolderSyncItemFromRemotePath(remoteSubFolder.Path);
+                    };
+
+                    CrawlSync(remoteSubFolder, remoteSubFolder.Path, localFolderItem.LocalPath);
+                }
+                else if (cmisObject is DotCMIS.Client.Impl.Document)
+                {
+                    var remoteDocument = cmisObject as IDocument;
+
+                    // Apply the change on all paths via which it is applicable.
+                    foreach (IFolder remoteIFolder in remoteDocument.Parents)
+                    {
+                        if (PathIsApplicable(remoteIFolder.Path))
+                        {
+                            Logger.Debug("Document change is applicable:" + remoteIFolder);
+
+                            var localFolderItem = database.GetFolderSyncItemFromRemotePath(remoteIFolder.Path);
+                            var localFolder = localFolderItem.LocalPath;
+
+                            var remoteDocumentPath = CmisUtils.PathCombine(remoteIFolder.Path, repoInfo.CmisProfile.localFilename(remoteDocument));
+                            var documentItem = SyncItemFactory.CreateFromRemoteDocument(remoteDocumentPath, remoteDocument, repoInfo, database);
+
+                            CrawlRemoteDocument(remoteDocument, documentItem.RemotePath, localFolder, null);
+                        }
+                    }
+                }
+                else
+                {
+
+                }
+            }
         }
     }
 }
