@@ -435,7 +435,7 @@ namespace CmisSync.Lib.Sync
                         {
                             //Before full sync, get latest changelog
                             var lastTokenOnServer = CmisUtils.GetChangeLogToken(session);
-                            success = CrawlSync(remoteFolder, remoteFolderPath, localFolder);
+                           CrawlSync(remoteFolder, remoteFolderPath, localFolder);
                             if(success) database.SetChangeLogToken(lastTokenOnServer);
                         }else
                         {
@@ -445,7 +445,7 @@ namespace CmisSync.Lib.Sync
                         }
 
                         //If crawl sync failed, retry.
-                        firstSync = success;
+                        firstSync = !success;
                     }
                     else
                     {
