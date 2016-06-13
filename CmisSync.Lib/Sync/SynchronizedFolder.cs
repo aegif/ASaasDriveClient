@@ -435,7 +435,7 @@ namespace CmisSync.Lib.Sync
                         {
                             //Before full sync, get latest changelog
                             var lastTokenOnServer = CmisUtils.GetChangeLogToken(session);
-                           CrawlSync(remoteFolder, remoteFolderPath, localFolder);
+                            success = CrawlSync(remoteFolder, remoteFolderPath, localFolder);
                             if(success) database.SetChangeLogToken(lastTokenOnServer);
                         }else
                         {
