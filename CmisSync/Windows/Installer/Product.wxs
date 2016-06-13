@@ -59,7 +59,7 @@
         <File Id="cmissync_app.ico" Name="cmissync.ico" Source="$(var.CmisSync.ProjectDir)\Pixmaps\cmissync-app.ico" DiskId="1" />
         <RemoveFile Id='RemoveOld_CmisSync.Lib.dll' On='install' Name='CmisSync.Lib.dll'/>
         <RemoveFile Id='RemoveOld_CmisSync.Auth.dll' On='install' Name='CmisSync.Auth.dll'/>
-        <RemoveFile Id='RemoveOld_DotCMIS.dlll' On='install' Name='DotCMIS.dll'/>
+        <RemoveFile Id='RemoveOld_DotCMIS.dll' On='install' Name='DotCMIS.dll'/>
       </Component>
     </DirectoryRef>
 
