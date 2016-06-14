@@ -870,7 +870,7 @@ namespace CmisSync.Lib.Database
                 string localPath = (localPathObj is DBNull) ? remotePath : (string)localPathObj;
                 return SyncItemFactory.CreateFromPaths(localPathPrefix, localPath, remotePathPrefix, remotePath, false);
             } else {
-                var items = GetAllFolderSyncItem(id);
+                var items = GetAllFoldersWithCmisId(id);
 
                 var item = items.FirstOrDefault();
                 return item == null ? null : item;
@@ -1015,13 +1015,13 @@ namespace CmisSync.Lib.Database
         /// </summary>
         public string GetFolderRemotePath(string id)
         {
-            var items = GetAllFolderSyncItem(id);
+            var items = GetAllFoldersWithCmisId(id);
 
             var item = items.FirstOrDefault();
             return item == null ? null : Denormalize(item.RemotePath);
         }
 
-        public List<SyncItem> GetAllFolderSyncItem(string id)
+        public List<SyncItem> GetAllFoldersWithCmisId(string id)
         {
             Dictionary<string, object> parameters = new Dictionary<string, object>();
             parameters.Add("id", id);

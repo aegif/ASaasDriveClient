@@ -112,7 +112,7 @@ namespace CmisSync.Lib.Sync
             /// <summary>
             /// Check whether a change is relevant for the current synchronized folder.
             /// </summary>
-            private bool ChangeIsApplicable(IChangeEvent change)
+            /*private bool ChangeIsApplicable(IChangeEvent change)
             {
                 ICmisObject cmisObject = null;
                 IFolder remoteFolder = null;
@@ -203,36 +203,14 @@ namespace CmisSync.Lib.Sync
 
                 // No path was relevant, so ignore the change.
                 return false;
-            }
+            }*/
             
             
             /// <summary>
-            /// Check whether a path is relevant for the current synchronized folder.
+            /// Apply CMIS ChangeLog changes.
             /// </summary>
-            private bool PathIsApplicable(string remotePath)
-            {
-                // Ignore the change if not in a synchronized folder.
-                if ( ! remotePath.StartsWith(this.remoteFolderPath))
-                {
-                    Logger.Info("Ignore change as it is not in the synchronized folder's path: " + remotePath);
-                    return false;
-                }
-
-                // Ignore if configured to be ignored.
-                if (this.repoInfo.isPathIgnored(remotePath))
-                {
-                    Logger.Info("Ignore change as it is in a path configured to be ignored: " + remotePath);
-                    return false;
-                }
-
-                // In other case, the change is probably applicable.
-                return true;
-            }
-
-
             private void CrawlChangeLogSyncAndUpdateChangeLogToken(IList<IChangeEvent> changeLogs, IFolder remoteFolder, string remotePath, string localFolder)
             {
-
                 SleepWhileSuspended();
 
                 var sw = new System.Diagnostics.Stopwatch();
@@ -242,13 +220,10 @@ namespace CmisSync.Lib.Sync
                     sw.Start();
                     Logger.InfoFormat("Change log sync start : {0} logs", changeLogs.Count());
 
-                    // //TODO: ƒ`ƒFƒ“ƒWƒƒO“¯Žm‚Å•s—v‚È‘€ì‚ðˆ³k‚·‚é(ˆÈ‰º‚Å‚ÍãŽè‚­s‚©‚È‚¢j
-
-
+                    // //TODO: チェンジログ同士で不要な操作を圧縮する(以下では上手く行かない
 
                     foreach (var change in changeLogs)
                     {
-
                         var id = change.ObjectId;
                         try
                         {
@@ -259,10 +234,8 @@ namespace CmisSync.Lib.Sync
                             Logger.InfoFormat("Change log : Type={0}, Id={1} ", change.ChangeType, id);
                         }
 
-
                         try
                         {
-
                             var cmisObject = session.GetObject(id);
                             CrawlCmisObject(cmisObject);
                         }
@@ -297,14 +270,16 @@ namespace CmisSync.Lib.Sync
                                         Logger.InfoFormat("Remote parent object not found, continue process change log. {0}", destFolderItem.RemotePath);
                                     }
                                 }
-
+                                else
+                                {
+                                    Logger.InfoFormat("Remote deleted object not in local database, ignore. {0}", id);
+                                }
                             }
                             else
                             {
                                 // ‚·‚Å‚ÉƒT[ƒo‚Åíœ‚³‚ê‚Ä‚¢‚éƒIƒuƒWƒFƒNƒg‚ÉŠÖ‚·‚éƒCƒxƒ“ƒg‚É‚Â‚¢‚Ä‚ÍDelete‚ª”­s‚³‚ê‚é‚Ì‚Åˆ—‚µ‚È‚¢
                                 Logger.InfoFormat("Remote object not found but delete event, ignore. {0}", id);
                             }
-
                         }
                         catch (Exception ex)
                         {
@@ -322,6 +297,9 @@ namespace CmisSync.Lib.Sync
             }
 
 
+            /// <summary>
+            /// Synchronize changes made to a particular CMIS object.
+            /// </summary>
             private void CrawlCmisObject(ICmisObject cmisObject)
             {
                 if (cmisObject is DotCMIS.Client.Impl.Folder)
@@ -329,21 +307,21 @@ namespace CmisSync.Lib.Sync
                     var remoteSubFolder = cmisObject as IFolder;
 
 
-                    // ƒ[ƒJƒ‹‚É‚ ‚éêŠ‚ð’T‚·
+                    // Look for the local equivalent.
                     var localFolderItem = database.GetFolderSyncItemFromRemotePath(remoteSubFolder.Path);
                     while (true)
                     {
-                        //ƒT[ƒo‚ÌƒpƒX‚ÆˆÙ‚È‚é‚ª“¯‚¶ID‚ªƒ[ƒJƒ‹‚Åd‚È‚Á‚Ä‚¢‚½ê‡‚ÍŒÃ‚¢‚Ì‚Åíœ‚·‚é
-                        var deleteFolderList = database.GetAllFolderSyncItem(cmisObject.Id).Where(p => p.RemotePath != remoteSubFolder.Path);
-                        foreach (var deleteFolder in deleteFolderList)
+                        // If other local folders have the same id, they are obsolete and must be deteled.
+                        var foldersToDelete = database.GetAllFoldersWithCmisId(cmisObject.Id).Where(p => p.RemotePath != remoteSubFolder.Path);
+                        foreach (var folderToDelete in foldersToDelete)
                         {
-                            RemoveFolderLocally(deleteFolder.LocalPath);
+                            RemoveFolderLocally(folderToDelete.LocalPath);
                         };
 
                         if (localFolderItem != null || remoteSubFolder.IsRootFolder) break;
 
-                        //TODO: Parents[0]
-                        remoteSubFolder = remoteSubFolder.Parents[0];
+                        // Go up one level before performing the same thing.
+                        remoteSubFolder = remoteSubFolder.Parents[0]; //TODO: Fix Parents[0] for multi-parent repositories
                         localFolderItem = database.GetFolderSyncItemFromRemotePath(remoteSubFolder.Path);
                     };
 
@@ -370,10 +348,30 @@ namespace CmisSync.Lib.Sync
                         }
                     }
                 }
-                else
-                {
+            }
 
+
+            /// <summary>
+            /// Check whether a path is relevant for the current synchronized folder.
+            /// </summary>
+            private bool PathIsApplicable(string remotePath)
+            {
+                // Ignore the change if not in a synchronized folder.
+                if (!remotePath.StartsWith(this.remoteFolderPath))
+                {
+                    Logger.Info("Ignore change as it is not in the synchronized folder's path: " + remotePath);
+                    return false;
                 }
+
+                // Ignore if configured to be ignored.
+                if (this.repoInfo.isPathIgnored(remotePath))
+                {
+                    Logger.Info("Ignore change as it is in a path configured to be ignored: " + remotePath);
+                    return false;
+                }
+
+                // In other case, the change is probably applicable.
+                return true;
             }
         }
     }

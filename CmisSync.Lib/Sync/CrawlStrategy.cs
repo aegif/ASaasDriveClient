@@ -107,6 +107,10 @@ namespace CmisSync.Lib.Sync
             }
 
 
+            /// <summary>
+            /// Perform a crawl sync (check all folders and file checksums).
+            /// If successful, update the local ChangeLog token.
+            /// </summary>
             private void CrawlSyncAndUpdateChangeLogToken(IFolder remoteFolder, string remotePath, string localFolder)
             {
                 var sw = new System.Diagnostics.Stopwatch();
