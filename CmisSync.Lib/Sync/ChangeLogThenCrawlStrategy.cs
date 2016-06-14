@@ -69,7 +69,7 @@ namespace CmisSync.Lib.Sync
 
                 if (lastTokenOnClient == lastTokenOnServer)
                 {
-                    Logger.Debug("No changes to sync, tokens on server and client are equal: \"" + lastTokenOnClient + "\"");
+                    Logger.DebugFormat("No changes to sync, tokens on server and client are equal: \"{0}\"", lastTokenOnClient);
                     return;
                 }
 
@@ -84,28 +84,25 @@ namespace CmisSync.Lib.Sync
                 }
 
                 // ChangeLog tokens are different, so checking changes is needed.
-                try
+
+                do
                 {
-                    do
-                    {
 
-                        // Check which documents/folders have changed.
-                        changes = session.GetContentChanges(lastTokenOnClient, IsPropertyChangesSupported, maxNumItems);
+                    // Check which documents/folders have changed.
+                    changes = session.GetContentChanges(lastTokenOnClient, IsPropertyChangesSupported, maxNumItems);
 
-                        CrawlChangeLogSyncAndUpdateChangeLogToken(changes.ChangeEventList, remoteFolder, remotePath, localFolder);
+                    CrawlChangeLogSyncAndUpdateChangeLogToken(changes.ChangeEventList, remoteFolder, remotePath, localFolder);
 
-                        // No applicable changes, update ChangeLog token.
-                        lastTokenOnClient = changes.LatestChangeLogToken; // But dont save to database as latest server token is actually a later token.
-                    }
-                    // Repeat if there were two many changes to fit in a single response.
-                    // Only reached if none of the changes in this iteration were non-applicable.
-                    while (changes.HasMoreItems ?? false);
+                    // No applicable changes, update ChangeLog token.
+                    lastTokenOnClient = changes.LatestChangeLogToken; // But dont save to database as latest server token is actually a later token.
 
-                }
-                finally
-                {
                     database.SetChangeLogToken(lastTokenOnServer);
                 }
+                // Repeat if there were two many changes to fit in a single response.
+                // Only reached if none of the changes in this iteration were non-applicable.
+                while (changes.HasMoreItems ?? false);
+
+
             }
 
 
@@ -220,7 +217,7 @@ namespace CmisSync.Lib.Sync
                     sw.Start();
                     Logger.InfoFormat("Change log sync start : {0} logs", changeLogs.Count());
 
-                    // //TODO: チェンジログ同士で不要な操作を圧縮する(以下では上手く行かない
+                    // TODO: Compact changelogs
 
                     foreach (var change in changeLogs)
                     {
@@ -267,7 +264,7 @@ namespace CmisSync.Lib.Sync
                                     catch (ArgumentNullException)
                                     {
                                         // GetObjectByPath failure
-                                        Logger.InfoFormat("Remote parent object not found, continue process change log. {0}", destFolderItem.RemotePath);
+                                        Logger.InfoFormat("Remote parent object not found, ignore. {0}", destFolderItem.RemotePath);
                                     }
                                 }
                                 else
@@ -277,7 +274,6 @@ namespace CmisSync.Lib.Sync
                             }
                             else
                             {
-                                // ‚·‚Å‚ÉƒT[ƒo‚Åíœ‚³‚ê‚Ä‚¢‚éƒIƒuƒWƒFƒNƒg‚ÉŠÖ‚·‚éƒCƒxƒ“ƒg‚É‚Â‚¢‚Ä‚ÍDelete‚ª”­s‚³‚ê‚é‚Ì‚Åˆ—‚µ‚È‚¢
                                 Logger.InfoFormat("Remote object not found but delete event, ignore. {0}", id);
                             }
                         }
