@@ -552,19 +552,26 @@ namespace CmisSync.Lib.Cmis
             try
             {
                 ICmisObject cmisObject = session.GetObjectByPath(path);
-                
+
                 if (cmisObject == null)
                 {
                     return false;
                 }
-                
+
                 return cmisObject.ObjectType.BaseTypeId.Equals(type)
                     || cmisObject.ObjectType.GetBaseType().BaseTypeId.Equals(type);
             }
-            catch (ArgumentNullException e)
+            catch (Exception e)
             {
-                // In DotCMIS, this exception actually means that the document does not exist.
-                return false;
+                if (e is ArgumentNullException || e is CmisObjectNotFoundException)
+                {
+                    // In DotCMIS, this exception actually means that the document does not exist.
+                    return false;
+                }
+                else
+                {
+                    throw;
+                }
             }
         }
     }

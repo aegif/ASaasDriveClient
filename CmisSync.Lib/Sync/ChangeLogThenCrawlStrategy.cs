@@ -59,7 +59,7 @@ namespace CmisSync.Lib.Sync
                 int maxNumItems = (features != null && features.MaxNumberOfContentChanges != null) ?  // TODO if there are more items, either loop or force CrawlSync
                     (int)features.MaxNumberOfContentChanges : 50;
 
-                IChangeEvents changes;
+                
 
                 // Get last change token that had been saved on client side.
                 string lastTokenOnClient = database.GetChangeLogToken();
@@ -84,25 +84,28 @@ namespace CmisSync.Lib.Sync
                 }
 
                 // ChangeLog tokens are different, so checking changes is needed.
-
+                var currentChangeToken = lastTokenOnClient;
+                IChangeEvents changes;
                 do
                 {
 
                     // Check which documents/folders have changed.
-                    changes = session.GetContentChanges(lastTokenOnClient, IsPropertyChangesSupported, maxNumItems);
+                    changes = session.GetContentChanges(currentChangeToken, IsPropertyChangesSupported, maxNumItems);
 
-                    CrawlChangeLogSyncAndUpdateChangeLogToken(changes.ChangeEventList, remoteFolder, remotePath, localFolder);
+                    // First event was already processed previous.
+                    var changeEvents = changes.ChangeEventList.Where(p => p != changes.ChangeEventList.FirstOrDefault()).ToList();
 
-                    // No applicable changes, update ChangeLog token.
-                    lastTokenOnClient = changes.LatestChangeLogToken; // But dont save to database as latest server token is actually a later token.
+                    CrawlChangeLogSyncAndUpdateChangeLogToken(changeEvents, remoteFolder, remotePath, localFolder);
 
-                    database.SetChangeLogToken(lastTokenOnServer);
+                    currentChangeToken = changes.LatestChangeLogToken; 
+
+                    database.SetChangeLogToken(currentChangeToken);
                 }
                 // Repeat if there were two many changes to fit in a single response.
                 // Only reached if none of the changes in this iteration were non-applicable.
                 while (changes.HasMoreItems ?? false);
 
-
+                database.SetChangeLogToken(lastTokenOnServer);
             }
 
 
@@ -224,7 +227,7 @@ namespace CmisSync.Lib.Sync
                         var id = change.ObjectId;
                         try
                         {
-                            Logger.InfoFormat("Change log : Type={0}, Name={1}", change.ChangeType, change.Properties["cmis:name"].First());
+                            Logger.InfoFormat("Change log : Type={0}, Name={1}, Id={2}", change.ChangeType, change.Properties["cmis:name"].First(), id);
                         }
                         catch
                         {
@@ -261,10 +264,17 @@ namespace CmisSync.Lib.Sync
                                             CheckLocalFile(local.LocalPath, destCmisFolder, new List<string>());
                                         }
                                     }
-                                    catch (ArgumentNullException)
+                                    catch (Exception e)
                                     {
-                                        // GetObjectByPath failure
-                                        Logger.InfoFormat("Remote parent object not found, ignore. {0}", destFolderItem.RemotePath);
+                                        if (e is ArgumentNullException || e is CmisObjectNotFoundException)
+                                        {
+                                            // GetObjectByPath failure
+                                            Logger.InfoFormat("Remote parent object not found, ignore. {0}", destFolderItem.RemotePath);
+                                        }
+                                        else
+                                        {
+                                            throw;
+                                        }
                                     }
                                 }
                                 else

@@ -213,22 +213,25 @@ namespace CmisSync.Lib.Sync
                             DeleteRemoteFolder(deletedIFolder, deletedItem, Utils.UpperFolderLocal(deletedItem.LocalPath));
                         }
                     }
-                    catch (ArgumentNullException e)
-                    {
-                        // Typical error when the document does not exist anymore on the server
-                        // TODO Make DotCMIS generate a more precise exception.
-
-                        Logger.Error("The folder has probably been deleted on the server already: " + deletedFolder, e);
-
-                        // Delete local database entry.
-                        database.RemoveFolder(SyncItemFactory.CreateFromLocalPath(deletedFolder, true, repoInfo, database));
-
-                        // Note: This is not a failure per-se, so we don't need to modify the "success" variable.
-                    }
                     catch (Exception e)
                     {
-                        Logger.Error("Error applying local folder deletion to the server: " + deletedFolder, e);
-                        success = false;
+                        if (e is ArgumentNullException || e is CmisObjectNotFoundException)
+                        {
+                            // Typical error when the document does not exist anymore on the server
+                            // TODO Make DotCMIS generate a more precise exception.
+
+                            Logger.Error("The folder has probably been deleted on the server already: " + deletedFolder, e);
+
+                            // Delete local database entry.
+                            database.RemoveFolder(SyncItemFactory.CreateFromLocalPath(deletedFolder, true, repoInfo, database));
+
+                            // Note: This is not a failure per-se, so we don't need to modify the "success" variable.
+                        }
+                        else
+                        {
+                            Logger.Error("Error applying local folder deletion to the server: " + deletedFolder, e);
+                            success = false;
+                        }
                     }
                 }
                 return success;
@@ -304,23 +307,26 @@ namespace CmisSync.Lib.Sync
                             DownloadFile(deletedDocument, deletedItem.RemotePath, deletedItem.LocalPath);
                         }
                     }
-                    catch (ArgumentNullException e)
-                    {
-                        // Typical error when the document does not exist anymore on the server
-                        // TODO Make DotCMIS generate a more precise exception.
-                        Logger.Info("The document has probably been deleted on the server already: " + deletedFile, e);
-
-                        // Delete local database entry.
-                        database.RemoveFile(deletedItem);
-
-                        // Note: This is not a failure per-se, so we don't need to modify the "success" variable.
-                    }
-                    
                     catch (Exception e)
                     {
-                        // Could be a network error.
-                        Logger.Error("Error applying local file deletion to the server: " + deletedFile, e);
-                        success = false;
+                        if (e is ArgumentNullException || e is CmisObjectNotFoundException)
+                        {
+                            // Typical error when the document does not exist anymore on the server
+                            // TODO Make DotCMIS generate a more precise exception.
+                            Logger.Info("The document has probably been deleted on the server already: " + deletedFile, e);
+
+                            // Delete local database entry.
+                            database.RemoveFile(deletedItem);
+
+                            // Note: This is not a failure per-se, so we don't need to modify the "success" variable.
+                        }
+                        else
+                        {
+
+                            // Could be a network error.
+                            Logger.Error("Error applying local file deletion to the server: " + deletedFile, e);
+                            success = false;
+                        }
                     }
                 }
                 return success;
