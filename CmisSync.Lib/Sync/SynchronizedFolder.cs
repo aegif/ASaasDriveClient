@@ -430,23 +430,27 @@ namespace CmisSync.Lib.Sync
                         // Compare local files with local database and apply changes to the server.
                         ApplyLocalChanges(localFolder);
 
-                        // Full sync.
-                        CrawlSync(remoteFolder, remoteFolderPath, localFolder);
+                        var success = false;
+                        if (ChangeLogCapability)
+                        {
+                            //Before full sync, get latest changelog
+                            var lastTokenOnServer = CmisUtils.GetChangeLogToken(session);
+                            success = CrawlSync(remoteFolder, remoteFolderPath, localFolder);
+                            if(success) database.SetChangeLogToken(lastTokenOnServer);
+                        }else
+                        {
+                            // Full sync.
+                            success = CrawlSync(remoteFolder, remoteFolderPath, localFolder);
 
-                        firstSync = false;
+                        }
+
+                        //If crawl sync failed, retry.
+                        firstSync = !success;
                     }
                     else
                     {
                         // Apply local changes noticed by the filesystem watcher.
-                        bool locallyModified = WatcherSync(remoteFolderPath, localFolder);
-                        if (locallyModified)
-                        {
-                            // First compare local files with local database and apply changes to the server.
-                            // The goal of doing this before CrawlSync is that changes get uploaded earlier.
-                            ApplyLocalChanges(localFolder);
-
-                            CrawlSyncAndUpdateChangeLogToken(remoteFolder, remoteFolderPath, localFolder);
-                        }
+                        WatcherSync(remoteFolderPath, localFolder);
 
                         // Compare locally, in case the watcher did not do its job correctly (that happens, Windows bug).
                         ApplyLocalChanges(localFolder);
@@ -656,6 +660,9 @@ namespace CmisSync.Lib.Sync
             /// <summary>
             /// Download all content from a CMIS folder.
             /// </summary>
+            /// <param name="remoteFolder">The new folder to download. Example: /sites/project/newfolder</param>
+            /// <param name="remotePath">The new folder to download. Example: /sites/project/newfolder</param>
+            /// <param name="localFolder">The new folder that will be filled by this operation. Warning: It must exist already! Example: C:\CmisSync\project\newfolder</param> TODO: Create the local folder in this method.
             private void RecursiveFolderCopy(IFolder remoteFolder, string remotePath, string localFolder)
             {
                 SleepWhileSuspended();
@@ -1382,17 +1389,26 @@ namespace CmisSync.Lib.Sync
                         Logger.Error("Failed to completely delete remote folder " + folder.Path);
                         // TODO Should we retry? Maybe at least once, as a manual recursion instead of a DeleteTree.
                     }
+
+                    // Delete the folder from database.
+                    database.RemoveFolder(syncItem);
                 }
                 catch (CmisPermissionDeniedException e)
                 {
+
+                    // TODO: リソース化
+                    string message = String.Format("フォルダ {0} に対して削除やリネームする権限がないため、サーバからこのフォルダを復元します（フォルダに含まれるファイル数が多い場合、復元に時間がかかります）。", syncItem.LocalPath);
+                    Utils.NotifyUser(message);
+
+
                     // We don't have the permission to delete this folder. Warn and recreate it.
+                    /*
                     Utils.NotifyUser("You don't have the necessary permissions to delete folder " + folder.Path
                         + "\nIf you feel you should be able to delete it, please contact your server administrator");
-                    RecursiveFolderCopy(folder, upperFolderPath, syncItem.LocalPath);
+                    */
+                    database.RemoveFolder(syncItem);
+                    DownloadDirectory(folder, syncItem.RemotePath, syncItem.LocalPath);
                 }
-
-                // Delete the folder from database.
-                database.RemoveFolder(syncItem);
             }
 
 
@@ -1552,7 +1568,6 @@ namespace CmisSync.Lib.Sync
 
                     Logger.InfoFormat("Moving: {0} -> {1}", oldPathname, newPathname);
 
-
                     IDocument updatedDocument = (IDocument)remoteFile.Move(oldRemoteFolder, newRemoteFolder);
 
                     // Update the path in the database...
@@ -1587,7 +1602,6 @@ namespace CmisSync.Lib.Sync
                 {
 
                     Logger.InfoFormat("Moving: {0} -> {1}", oldPathname, newPathname);
-
 
                     IFolder updatedFolder = (IFolder)remoteFolder.Move(oldRemoteFolder, newRemoteFolder);
 

@@ -436,6 +436,34 @@ namespace CmisSync.Lib
         }
 
 
+        public static string CreateConflictFoldername(String path, String user)
+        {
+            if (!Directory.Exists(path))
+            {
+                return path;
+            }
+            else
+            {
+                string ret = String.Format("{0}_{1}-conflict-version", path, user);
+                if (!Directory.Exists(ret))
+                    return ret;
+                int index = 1;
+                do
+                {
+                    ret = String.Format("{0}_{1}-conflict-version ({2})", path, user, index.ToString());
+                    if (!Directory.Exists(ret))
+                    {
+                        return ret;
+                    }
+                    index++;
+                }
+                while (true);
+            }
+        }
+
+
+
+
         /// <summary>
         /// Format a file size nicely.
         /// Example: 1048576 becomes "1 MB"
@@ -605,6 +633,7 @@ namespace CmisSync.Lib
 
         /// <summary>
         /// Says whether a folder contains another.
+        /// Example: FirstFolderContainsSecond("/a", "/a/b") => true
         /// </summary>
         public static bool FirstFolderContainsSecond(string containingFolder, string containedFolder)
         {

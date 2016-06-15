@@ -54,6 +54,13 @@ namespace CmisSync.Lib
         /// Whether the item is a folder or a file.
         /// </summary>
         protected bool isFolder;
+        public bool IsFolder
+        {
+            get
+            {
+                return isFolder;
+            }
+        }
 
         /// <summary>
         /// Reference to the CmisSync database.
@@ -369,7 +376,7 @@ namespace CmisSync.Lib
         {
             get
             {
-                return Utils.PathCombine(remoteRoot , RemoteRelativePath);
+                return CmisUtils.PathCombine(remoteRoot , RemoteRelativePath);
             }
         }
 

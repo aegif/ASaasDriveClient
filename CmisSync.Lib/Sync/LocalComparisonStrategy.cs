@@ -5,6 +5,8 @@ using System.Linq;
 using DotCMIS.Client;
 using System.IO;
 using CmisSync.Lib.Database;
+using CmisSync.Lib.Cmis;
+using DotCMIS.Exceptions;
 
 namespace CmisSync.Lib.Sync
 {
@@ -22,7 +24,8 @@ namespace CmisSync.Lib.Sync
             /// <param name="rootFolder">Full path of the local synchronized folder, for instance "/User Homes/nicolas.raoul/demos"</param>
             public bool ApplyLocalChanges(string rootFolder)
             {
-                try {
+                try
+                {
                     var deletedFolders = new List<string>();
                     var deletedFiles = new List<string>();
                     var modifiedFiles = new List<string>();
@@ -41,7 +44,8 @@ namespace CmisSync.Lib.Sync
                     int numberOfChanges = deletedFolders.Count + deletedFiles.Count + modifiedFiles.Count + addedFolders.Count + addedFiles.Count;
                     Logger.Debug(numberOfChanges + " local changes to apply.");
 
-                    if (numberOfChanges == 0) {
+                    if (numberOfChanges == 0)
+                    {
                         return true; // Success: Did nothing.
                     }
 
@@ -55,7 +59,9 @@ namespace CmisSync.Lib.Sync
 
                     Logger.Debug("Finished applying local changes.");
                     return success;
-                }finally {
+                }
+                finally
+                {
                     activityListener.ActivityStopped();
                 }
             }
@@ -154,13 +160,14 @@ namespace CmisSync.Lib.Sync
 
                 // Ignore deleted files and folders that are sub-items of a deleted folder.
                 // Folder removal is done recursively so removing sub-items would be redundant.
+
                 foreach (string deletedFolder in new List<string>(deletedFolders)) // Copy the list to avoid modifying it while iterating.
                 {
                     // Ignore deleted files contained in the deleted folder.
                     deletedFiles.RemoveAll(deletedFile => deletedFile.StartsWith(deletedFolder));
 
                     // Ignore deleted folders contained in the deleted folder.
-                    deletedFolders.RemoveAll(otherDeletedFolder => Utils.FirstFolderContainsSecond(otherDeletedFolder, deletedFolder));
+                    deletedFolders.RemoveAll(otherDeletedFolder => Utils.FirstFolderContainsSecond(deletedFolder, otherDeletedFolder));
                 }
             }
 
@@ -176,29 +183,103 @@ namespace CmisSync.Lib.Sync
                     SyncItem deletedItem = SyncItemFactory.CreateFromLocalPath(deletedFolder, true, repoInfo, database);
                     try
                     {
-                        IFolder deletedIFolder = (IFolder)session.GetObjectByPath(deletedItem.RemotePath);
-                        DeleteRemoteFolder(deletedIFolder, deletedItem, Utils.UpperFolderLocal(deletedItem.LocalPath));
-                    }
-                    catch (ArgumentNullException e)
-                    {
-                        // Typical error when the document does not exist anymore on the server
-                        // TODO Make DotCMIS generate a more precise exception.
+                        var deletedIFolder = session.GetObjectByPath(deletedItem.RemotePath) as IFolder;
 
-                        Logger.Error("The folder has probably been deleted on the server already: " + deletedFolder, e);
+                        // Check whether the remote folder has changes we haven't gotten yet (conflict)
+                        var changed = HasFolderChanged(deletedIFolder);
 
-                        // Delete local database entry.
-                        database.RemoveFolder(SyncItemFactory.CreateFromLocalPath(deletedFolder, true, repoInfo, database));
+                        // Delete the remote folder if unchanged, otherwise let full sync handle the conflict.
+                        var remotePath = deletedItem.RemotePath;
+                        var localPath = deletedItem.LocalPath;
+                        var remoteFolders = new List<string>();
 
-                        // Note: This is not a failure per-se, so we don't need to modify the "success" variable.
+                        if (changed)
+                        {
+
+                            // TODO: リソース化
+                            string message = String.Format("ローカルで削除されたフォルダ {0} の子要素がサーバ側で更新されていたため、フォルダ全体を復帰します。必要であれば再度削除を試みてください。", localPath);
+                            Utils.NotifyUser(message);
+
+                            // TODO: フォルダのコンフリクト処理
+                            // Delete local database entry.
+                            database.RemoveFolder(SyncItemFactory.CreateFromLocalPath(deletedFolder, true, repoInfo, database));
+
+                            DownloadDirectory(deletedIFolder, remotePath, localPath);
+
+                            return false;
+                        }
+                        else
+                        {
+                            DeleteRemoteFolder(deletedIFolder, deletedItem, Utils.UpperFolderLocal(deletedItem.LocalPath));
+                        }
                     }
                     catch (Exception e)
                     {
-                        Logger.Error("Error applying local folder deletion to the server: " + deletedFolder, e);
-                        success = false;
+                        if (e is ArgumentNullException || e is CmisObjectNotFoundException)
+                        {
+                            // Typical error when the document does not exist anymore on the server
+                            // TODO Make DotCMIS generate a more precise exception.
+
+                            Logger.Error("The folder has probably been deleted on the server already: " + deletedFolder, e);
+
+                            // Delete local database entry.
+                            database.RemoveFolder(SyncItemFactory.CreateFromLocalPath(deletedFolder, true, repoInfo, database));
+
+                            // Note: This is not a failure per-se, so we don't need to modify the "success" variable.
+                        }
+                        else
+                        {
+                            Logger.Error("Error applying local folder deletion to the server: " + deletedFolder, e);
+                            success = false;
+                        }
                     }
                 }
                 return success;
             }
+
+            private bool HasFolderChanged(IFolder deletedIFolder)
+            {
+                // TODO 新規作成に対応できてない
+
+                // ChangeLog 
+                string lastTokenOnClient = database.GetChangeLogToken();
+                string lastTokenOnServer = CmisUtils.GetChangeLogToken(session);
+
+                if (lastTokenOnClient == lastTokenOnServer || lastTokenOnClient == null) return false;
+
+                // TODO: Extract static code, because same code was writtern in SynchronizedFolder
+                Config.Feature features = null;
+                if (ConfigManager.CurrentConfig.GetFolder(repoInfo.Name) != null)
+                    features = ConfigManager.CurrentConfig.GetFolder(repoInfo.Name).SupportedFeatures;
+                int maxNumItems = (features != null && features.MaxNumberOfContentChanges != null) ?  // TODO if there are more items, either loop or force CrawlSync
+                    (int)features.MaxNumberOfContentChanges : 500;
+
+                var changes = session.GetContentChanges(lastTokenOnClient, IsPropertyChangesSupported, maxNumItems);
+
+                return CheckInsideChange(deletedIFolder, changes);
+            }
+
+            private bool CheckInsideChange(IFolder targetIFolder, IChangeEvents changeTokens)
+            {
+                var children = targetIFolder.GetChildren();
+                var leafFolders = children.OfType<IFolder>();
+                var leafFiles = children.OfType<IDocument>();
+
+                var changed =
+                    leafFolders.Any(childFolder => changeTokens.ChangeEventList.Any(change => childFolder.Id == change.ObjectId))
+                    || leafFiles.Any(childFile => changeTokens.ChangeEventList.Any(change => childFile.VersionSeriesId == change.Properties["versionSeriesId"][0] as string))
+                    ;
+                if (changed) return true;
+
+                foreach (var leafFolder in leafFolders)
+                {
+                    changed = CheckInsideChange(leafFolder, changeTokens);
+                    if (changed) return true;
+                }
+                return false;
+            }
+
+
 
 
             /// <summary>
@@ -209,29 +290,43 @@ namespace CmisSync.Lib.Sync
                 bool success = true;
                 foreach (string deletedFile in deletedFiles)
                 {
-                    SyncItem deletedItem = SyncItemFactory.CreateFromLocalPath(deletedFile, true, repoInfo, database);
+                    SyncItem deletedItem = SyncItemFactory.CreateFromLocalPath(deletedFile, false, repoInfo, database);
                     try
                     {
                         IDocument deletedDocument = (IDocument)session.GetObjectByPath(deletedItem.RemotePath);
-                        DeleteRemoteDocument(deletedDocument, deletedItem);
-                    }
-                    catch (ArgumentNullException e)
-                    {
-                        // Typical error when the document does not exist anymore on the server
-                        // TODO Make DotCMIS generate a more precise exception.
 
-                        Logger.Error("The document has probably been deleted on the server already: " + deletedFile, e);
-
-                        // Delete local database entry.
-                        database.RemoveFile(SyncItemFactory.CreateFromLocalPath(deletedFile, false, repoInfo, database));
-
-                        // Note: This is not a failure per-se, so we don't need to modify the "success" variable.
+                        // Needed by the normal crawl, but actually not used in our particular case here.
+                        IList<string> remoteFiles = new List<string>();
+                        try
+                        {
+                            CrawlRemoteDocument(deletedDocument, deletedItem.RemotePath, deletedItem.LocalPath, remoteFiles);
+                        }
+                        catch (CmisPermissionDeniedException e)
+                        {
+                            Logger.Info("This user cannot delete file : " + deletedFile, e);
+                            DownloadFile(deletedDocument, deletedItem.RemotePath, deletedItem.LocalPath);
+                        }
                     }
                     catch (Exception e)
                     {
-                        // Could be a network error.
-                        Logger.Error("Error applying local file deletion to the server: " + deletedFile, e);
-                        success = false;
+                        if (e is ArgumentNullException || e is CmisObjectNotFoundException)
+                        {
+                            // Typical error when the document does not exist anymore on the server
+                            // TODO Make DotCMIS generate a more precise exception.
+                            Logger.Info("The document has probably been deleted on the server already: " + deletedFile, e);
+
+                            // Delete local database entry.
+                            database.RemoveFile(deletedItem);
+
+                            // Note: This is not a failure per-se, so we don't need to modify the "success" variable.
+                        }
+                        else
+                        {
+
+                            // Could be a network error.
+                            Logger.Error("Error applying local file deletion to the server: " + deletedFile, e);
+                            success = false;
+                        }
                     }
                 }
                 return success;
@@ -250,7 +345,9 @@ namespace CmisSync.Lib.Sync
                     try
                     {
                         IDocument modifiedDocument = (IDocument)session.GetObjectByPath(modifiedItem.RemotePath);
-                        UpdateFile(modifiedItem.LocalPath, modifiedDocument);
+
+                        IList<string> remoteFiles = new List<string>(); // Needed by the crawl method.
+                        CrawlRemoteDocument(modifiedDocument, modifiedItem.RemotePath, modifiedItem.LocalPath, remoteFiles);
                     }
                     catch (Exception e)
                     {
@@ -271,11 +368,21 @@ namespace CmisSync.Lib.Sync
                 foreach (string addedFolder in addedFolders)
                 {
                     string destinationFolderPath = Path.GetDirectoryName(addedFolder);
-                    SyncItem folderItem = SyncItemFactory.CreateFromLocalPath(destinationFolderPath, true, repoInfo, database);
+                    SyncItem destinationFolderItem = SyncItemFactory.CreateFromLocalPath(destinationFolderPath, true, repoInfo, database);
+                    SyncItem addedFolderItem = SyncItemFactory.CreateFromLocalPath(addedFolder, true, repoInfo, database);
                     try
                     {
-                        IFolder destinationFolder = (IFolder)session.GetObjectByPath(folderItem.RemotePath);
-                        UploadFolderRecursively(destinationFolder, addedFolder);
+                        IFolder destinationFolder = (IFolder)session.GetObjectByPath(destinationFolderItem.RemotePath);
+
+                        IList<string> remoteFolders = new List<string>();
+
+                        if (CmisUtils.FolderExists(session, addedFolderItem.RemotePath))
+                        {
+                            remoteFolders.Add(addedFolderItem.RemoteLeafname);
+                        }
+
+                        // TODO more efficient: first create said folder, then call CrawlSync in it.
+                        CrawlSync(destinationFolder, destinationFolderItem.RemotePath, destinationFolderItem.LocalPath);
                     }
                     catch (Exception e)
                     {
@@ -297,10 +404,21 @@ namespace CmisSync.Lib.Sync
                 {
                     string destinationFolderPath = Path.GetDirectoryName(addedFile);
                     SyncItem folderItem = SyncItemFactory.CreateFromLocalPath(destinationFolderPath, true, repoInfo, database);
+                    SyncItem fileItem = SyncItemFactory.CreateFromLocalPath(addedFile, false, repoInfo, database);
                     try
                     {
                         IFolder destinationFolder = (IFolder)session.GetObjectByPath(folderItem.RemotePath);
-                        UploadFile(addedFile, destinationFolder);
+
+                        // Fill documents list, needed by the crawl method.
+                        IList<string> remoteFiles = new List<string>();
+
+                        if (CmisUtils.DocumentExists(session, fileItem.RemotePath))
+                        {
+                            remoteFiles.Add(fileItem.RemoteLeafname);
+                        }
+
+                        // Crawl this particular file.
+                        CheckLocalFile(fileItem.LocalPath, destinationFolder, remoteFiles);
                     }
                     catch (Exception e)
                     {

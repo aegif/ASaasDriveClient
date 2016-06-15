@@ -46,52 +46,60 @@ namespace CmisSync.Lib.Sync
                 while (changeQueue.Count > 0)
                 {
                     activityListener.ActivityStarted();
-                    FileSystemEventArgs earliestChange = changeQueue.Dequeue();
-                    string pathname = earliestChange.FullPath;
-                    if (!pathname.StartsWith(localFolder))
+                    try
                     {
-                        Logger.DebugFormat("Path {0} does not apply for target {1}.", pathname, localFolder);
-                        activityListener.ActivityStopped();
-                        continue;
-                    }
-                    if (pathname == localFolder)
-                    {
-                        continue;
-                    }
-                    if (earliestChange is CmisSync.Lib.Watcher.MovedEventArgs)
-                    {
-                        // Move
-                        CmisSync.Lib.Watcher.MovedEventArgs change = (CmisSync.Lib.Watcher.MovedEventArgs)earliestChange;
-                        Logger.DebugFormat("Processing 'Moved': {0} -> {1}.", change.OldFullPath, pathname);
-                        bool done = WatchSyncMove(remoteFolder, localFolder, change.OldFullPath, pathname);
-                        locallyModified |= !done;
-                    }
-                    else if (earliestChange is RenamedEventArgs)
-                    {
-                        // Rename
-                        RenamedEventArgs change = (RenamedEventArgs)earliestChange;
-                        Logger.DebugFormat("Processing 'Renamed': {0} -> {1}.", change.OldFullPath, pathname);
-                        bool done = WatchSyncMove(remoteFolder, localFolder, change.OldFullPath, pathname);
-                        locallyModified |= !done;
-                    }
-                    else
-                    {
-                        Logger.DebugFormat("Processing '{0}': {1}.", earliestChange.ChangeType, pathname);
-                        switch (earliestChange.ChangeType)
+                        FileSystemEventArgs earliestChange = changeQueue.Dequeue();
+                        string pathname = earliestChange.FullPath;
+                        if (!pathname.StartsWith(localFolder))
                         {
-                            case WatcherChangeTypes.Created:
-                            case WatcherChangeTypes.Changed:
-                                bool done = WatcherSyncUpdate(remoteFolder, localFolder, pathname);
-                                locallyModified |= !done;
-                                break;
-                            case WatcherChangeTypes.Deleted:
-                                done = WatcherSyncDelete(remoteFolder, localFolder, pathname);
-                                locallyModified |= !done;
-                                break;
-                            default:
-                                Logger.ErrorFormat("Ignoring change with unhandled type -> '{0}': {1}.", earliestChange.ChangeType, pathname);
-                                break;
+                            Logger.DebugFormat("Path {0} does not apply for target {1}.", pathname, localFolder);
+                            activityListener.ActivityStopped();
+                            continue;
                         }
+                        if (pathname == localFolder)
+                        {
+                            continue;
+                        }
+                        if (earliestChange is CmisSync.Lib.Watcher.MovedEventArgs)
+                        {
+                            // Move
+                            CmisSync.Lib.Watcher.MovedEventArgs change = (CmisSync.Lib.Watcher.MovedEventArgs)earliestChange;
+                            Logger.DebugFormat("Processing 'Moved': {0} -> {1}.", change.OldFullPath, pathname);
+                            bool done = WatchSyncMove(remoteFolder, localFolder, change.OldFullPath, pathname);
+                            locallyModified |= !done;
+                        }
+                        else if (earliestChange is RenamedEventArgs)
+                        {
+                            // Rename
+                            RenamedEventArgs change = (RenamedEventArgs)earliestChange;
+                            Logger.DebugFormat("Processing 'Renamed': {0} -> {1}.", change.OldFullPath, pathname);
+                            bool done = WatchSyncMove(remoteFolder, localFolder, change.OldFullPath, pathname);
+                            locallyModified |= !done;
+                        }
+                        else
+                        {
+                            Logger.DebugFormat("Processing '{0}': {1}.", earliestChange.ChangeType, pathname);
+                            switch (earliestChange.ChangeType)
+                            {
+                                case WatcherChangeTypes.Created:
+                                case WatcherChangeTypes.Changed:
+                                    bool done = WatcherSyncUpdate(remoteFolder, localFolder, pathname);
+                                    locallyModified |= !done;
+                                    break;
+                                case WatcherChangeTypes.Deleted:
+                                    done = WatcherSyncDelete(remoteFolder, localFolder, pathname);
+                                    locallyModified |= !done;
+                                    break;
+                                default:
+                                    Logger.ErrorFormat("Ignoring change with unhandled type -> '{0}': {1}.", earliestChange.ChangeType, pathname);
+                                    break;
+                            }
+                        }
+                    }
+                    catch(Exception ex)
+                    {
+                        //エラーが出たらローカルを強制同期へ
+                        locallyModified = true;
                     }
                     activityListener.ActivityStopped();
                 }
