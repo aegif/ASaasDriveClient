@@ -157,7 +157,7 @@ namespace CmisSync.Lib
 
 
         /// <summary>
-        /// Path of the folder where the synchronized folders are stored to by default.
+        /// Path where the synchronized folders are stored by default.
         /// </summary>
         public string FoldersPath
         {
@@ -352,7 +352,11 @@ namespace CmisSync.Lib
 
         private string GetLogLevel()
         {
+#if (DEBUG)
+            return "DEBUG";
+#else
             return "INFO";
+#endif
         }
 
 
@@ -614,7 +618,7 @@ namespace CmisSync.Lib
                 /// </summary>
                 public RepoInfo GetRepoInfo()
                 {
-                    // TODO: ワークアラウンド
+                    // TODO: workaround
                     var localPath = LocalPath.TrimEnd(Path.DirectorySeparatorChar);
 
                     RepoInfo repoInfo = new RepoInfo(DisplayName, ConfigManager.CurrentConfig.ConfigPath);

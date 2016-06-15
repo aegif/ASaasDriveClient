@@ -317,6 +317,19 @@ namespace CmisSync.Lib
 
 
         /// <summary>
+        /// Determines whether this instance is valid ISO-8859-1 specified input.
+        /// </summary>
+        /// <param name="input">If set to <c>true</c> input.</param>
+        /// <returns><c>true</c> if this instance is valid ISO-8859-1 specified input; otherwise, <c>false</c>.</returns>
+        public static bool IsValidISO88591(string input)
+        {
+            byte[] bytes = Encoding.GetEncoding(28591).GetBytes(input);
+            String result = Encoding.GetEncoding(28591).GetString(bytes);
+            return String.Equals(input, result);
+        }
+
+
+        /// <summary>
         /// Check whether the file is worth syncing or not.
         /// Files that are not worth syncing include temp files, locks, etc.
         /// </summary>

@@ -401,7 +401,7 @@ namespace CmisSync.Lib
 
     ///////////////////////////////////////////////////////////////////////////
     /// <summary>
-    /// Converter between local path representation and remote path representation.
+    /// Converter between local path representation to remote path representation.
     /// Example:
     ///  - Remote: aproject/adir/a<file
     ///  - Local: A Project\adir\afile.txt

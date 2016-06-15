@@ -98,7 +98,6 @@ namespace CmisSync.Lib.Sync
                     }
                     catch(Exception ex)
                     {
-                        //エラーが出たらローカルを強制同期へ
                         locallyModified = true;
                     }
                     activityListener.ActivityStopped();
@@ -108,7 +107,7 @@ namespace CmisSync.Lib.Sync
 
 
             /// <summary>
-            /// An move event was received from the filesystem watcher, analyze the change and apply it.
+            /// An event was received from the filesystem watcher, analyze the change and apply it.
             /// <returns>Whether the move has now been synchronized, so that no further action is needed</returns>
             /// </summary>
             private bool WatchSyncMove(string remoteFolder, string localFolder, string oldPathname, string newPathname)
