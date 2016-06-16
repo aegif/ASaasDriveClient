@@ -1396,7 +1396,7 @@ namespace CmisSync.Lib.Sync
                 catch (CmisPermissionDeniedException e)
                 {
 
-                    // TODO: リソース化
+                    // TODO: Add resource
                     string message = String.Format("フォルダ {0} に対して削除やリネームする権限がないため、サーバからこのフォルダを復元します（フォルダに含まれるファイル数が多い場合、復元に時間がかかります）。", syncItem.LocalPath);
                     Utils.NotifyUser(message);
 
