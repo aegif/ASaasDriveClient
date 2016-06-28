@@ -428,7 +428,7 @@ namespace CmisSync.Lib.Sync
                         Logger.Debug("First sync, apply local changes then invoke a full crawl sync");
                         
                         // Compare local files with local database and apply changes to the server.
-                        ApplyLocalChanges(localFolder);
+                        ApplyLocalChanges(localFolder, repoInfo);
 
                         var success = false;
                         if (ChangeLogCapability)
@@ -453,7 +453,7 @@ namespace CmisSync.Lib.Sync
                         WatcherSync(remoteFolderPath, localFolder);
 
                         // Compare locally, in case the watcher did not do its job correctly (that happens, Windows bug).
-                        ApplyLocalChanges(localFolder);
+                        ApplyLocalChanges(localFolder, repoInfo);
 
                         if (ChangeLogCapability)
                         {

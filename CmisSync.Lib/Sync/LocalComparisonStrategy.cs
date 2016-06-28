@@ -22,7 +22,7 @@ namespace CmisSync.Lib.Sync
             /// modifications to the remote server.
             /// </summary>
             /// <param name="rootFolder">Full path of the local synchronized folder, for instance "/User Homes/nicolas.raoul/demos"</param>
-            public bool ApplyLocalChanges(string rootFolder)
+            public bool ApplyLocalChanges(string rootFolder, RepoInfo repoInfo)
             {
                 try
                 {
@@ -33,10 +33,10 @@ namespace CmisSync.Lib.Sync
                     var addedFiles = new List<string>();
 
                     // Check for added folders and files.
-                    FindNewLocalObjects(rootFolder, ref addedFolders, ref addedFiles);
+                    FindNewLocalObjects(repoInfo, rootFolder, ref addedFolders, ref addedFiles);
 
                     // Check for deleted and modified folders and files.
-                    FindModifiedOrDeletedLocalObjects(rootFolder, ref deletedFolders, ref deletedFiles, ref modifiedFiles);
+                    FindModifiedOrDeletedLocalObjects(repoInfo, rootFolder, ref deletedFolders, ref deletedFiles, ref modifiedFiles);
 
                     // TODO: Try to make sense of related changes, for instance renamed folders.
                     // TODO: Check local metadata modification cache.
@@ -70,7 +70,7 @@ namespace CmisSync.Lib.Sync
             /// <summary>
             /// Check for added folders and files.
             /// </summary>
-            public void FindNewLocalObjects(string folder, ref List<string> addedFolders, ref List<string> addedFiles)
+            public void FindNewLocalObjects(RepoInfo repoInfo, string folder, ref List<string> addedFolders, ref List<string> addedFiles)
             {
                 // Check files in this folder.
                 string[] files;
@@ -88,7 +88,7 @@ namespace CmisSync.Lib.Sync
                 {
                     // Check whether this file is present in database.
                     string filePath = Path.Combine(folder, file);
-                    if ( ! database.ContainsLocalFile(filePath))
+                    if ( ! database.ContainsLocalFile(filePath) && Utils.WorthSyncing(folder,Path.GetFileName(file), repoInfo))
                     {
                         addedFiles.Add(filePath);
                     }
@@ -113,7 +113,7 @@ namespace CmisSync.Lib.Sync
                     if (database.ContainsLocalPath(folderPath))
                     {
                         // Recurse.
-                        FindNewLocalObjects(folderPath, ref addedFolders, ref addedFiles);
+                        FindNewLocalObjects(repoInfo, folderPath, ref addedFolders, ref addedFiles);
                     }
                     else
                     {
@@ -127,7 +127,7 @@ namespace CmisSync.Lib.Sync
             /// <summary>
             /// Check for deleted and modified folders and files.
             /// </summary>
-            public void FindModifiedOrDeletedLocalObjects(String rootFolder, ref List<string> deletedFolders,
+            public void FindModifiedOrDeletedLocalObjects(RepoInfo repoInfo, String rootFolder, ref List<string> deletedFolders,
                 ref List<string> deletedFiles, ref List<string> modifiedFiles)
             {
                 // Crawl through all entries in the database, and record the ones that have changed on the filesystem.
